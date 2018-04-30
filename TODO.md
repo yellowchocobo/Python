@@ -1,0 +1,4 @@
+- Script to calculate the landing position and flight time from Melosh and Croft.
+- PEP-8 of all the file
+- Need to clean unnecessary repetition in scripts
+- __init__.py
