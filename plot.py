@@ -32,7 +32,8 @@
 import numpy as np
 import os
 import sys
-import matplotlib.pyplot as plt, os
+import matplotlib.pyplot as plt
+import os
 from pylab import arange
 from matplotlib import rc
 import matplotlib.gridspec as gridspec
@@ -58,18 +59,18 @@ rc('font', weight='bold')
 
 '''
 ***********************************************************************
-''' 
+'''
+
 
 def make_video(path, delay_number, loop_number, videolabel):
-    
     '''
     description:
-    
+
     path = '/mypath/' # note the slash at the end
     delay_number: in hundreds of a second
     loop: = 0 infinite looping, 1 = once, 2 = twice ....
     videoname = 'myvideo.gif'  
-    
+
     example:
     path = '/work/nilscp/iSALE/isaleruns/velocity/ndata/C00P10F06LONG_L800/evolution/plots/Porosity/'
     delay_number = 10
@@ -78,39 +79,42 @@ def make_video(path, delay_number, loop_number, videolabel):
     make_video(path, delay_number, loop_number, videoname)
     '''
     os.chdir(path)
-    
-    videoname = videolabel + '_delay' + str(int(delay_number)) + '_loop' + str(loop_number) + '.gif'
-    
-    command = ("convert -delay " + str(delay_number) +  " -loop " + str(loop_number) + " " + str(path) +
+
+    videoname = videolabel + '_delay' + \
+        str(int(delay_number)) + '_loop' + str(loop_number) + '.gif'
+
+    command = ("convert -delay " + str(delay_number) + " -loop " + str(loop_number) + " " + str(path) +
                "*.png " + videoname)
-    
-    subprocess.Popen(command.split(),cwd = path)
-    
+
+    subprocess.Popen(command.split(), cwd=path)
+
     print 'Steven Spielberg'
-    
+
+
 '''
 ***********************************************************************
-''' 
-    
-def find_nearest(array,value):
-    
+'''
+
+
+def find_nearest(array, value):
     '''
     description:
     find the nearest value in an array
-    
+
     output:
     value and index where the nearest value is found
     '''
-    
+
     idx = np.nanargmin((np.abs(array-value)))
     return array[idx], idx
 
+
 '''
 ***********************************************************************
-'''   
+'''
+
 
 def morphology(path1, paths, norm, normpath, timei, showtransient, showhline, lbl):
-    
     '''    
     path1 = '/work/nilscp/iSALE/isaleruns/testruns/ejecta/L20km_part1_HYDRO_CPPR1000/results/L20km_HYDRO_part1g/'
     paths = '/work/nilscp/iSALE/isaleruns/data/ejecta/L20km_HYDRO_part1g/'
@@ -121,46 +125,46 @@ def morphology(path1, paths, norm, normpath, timei, showtransient, showhline, lb
     timei = 'pen' #'transient' or 'norm' or 'pen' (for penetration time)
 
     lbl = r"$\mathit{U} = 12.7 km/s, \mathit{L} = 20 km$"
-    
+
     morphology(path1, paths, norm, normpath, timei, showtransient, showhline, lbl)
-    
-    
-    
+
+
+
     #loop
     L = [100,200,300,400,500,600,700,800,900,1000]
     name = 'C00P10F06LONG_U04_L'
-    
+
     for l in L:
         tmp_name = name + str(l)
          path1 = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/velocity/results/' + tmp_name
          paths = '/run/media/nilscp/Zell/velocity/data/'  + tmp_name
          lbl = r'$\mathit{U} = 400 m/s, \mathit{L} = ' + str(l) + ' m$"
          evoplot(path1,paths, path1tr, pathstr, norm, extentx, extenty, lbl)
-         
-         
+
+
     ############################3
-         
+
     What if it is nan?
-    
+
     What if we want to plot the transient crater in addition
-    
+
     Maybe I could also have a function without having the need to have extentx and extenty
     taking 20% of the final drim and so much of the maximum depth.... or a fraction of the final drim
     we known that d ~ 0.2D
-    
+
     norm = 0.5 can only be used for showtransient == False
     '''
-    
-    plt.ioff() #figures does not pop up
-    
+
+    plt.ioff()  # figures does not pop up
+
     os.chdir(path1)
     mod1 = psp.opendatfile('jdata.dat')
-        
+
     modelname = path1.split('/')[-2]
-    
+
     if not os.path.exists(paths + 'evolution/plots/morphology'):
         os.makedirs(paths + 'evolution/plots/morphology')
-    
+
     if (norm == 0):
         if not os.path.exists(paths + 'evolution/plots/morphology/absolute/'):
             os.makedirs(paths + 'evolution/plots/morphology/absolute')
@@ -173,324 +177,355 @@ def morphology(path1, paths, norm, normpath, timei, showtransient, showhline, lb
     else:
         if not os.path.exists(paths + 'evolution/plots/morphology/norm/'):
             os.makedirs(paths + 'evolution/plots/morphology/norm')
-    
-    if norm == 1:                
+
+    if norm == 1:
         os.chdir(paths + 'transient/')
-        
-        #load data for the transient crater 1
-        t_trg, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __  = np.loadtxt(modelname + '_tr.txt',delimiter='\t',comments='#')
-        
-        
+
+        # load data for the transient crater 1
+        t_trg, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __ = np.loadtxt(
+            modelname + '_tr.txt', delimiter='\t', comments='#')
+
         os.chdir(paths + 'final/')
-        t_f, __, __, __, __, drim_f, __  = np.loadtxt(modelname + '_final.txt',delimiter='\t',comments='#')
-        rinner1 = drim_f/2.              
-                           
+        t_f, __, __, __, __, drim_f, __ = np.loadtxt(
+            modelname + '_final.txt', delimiter='\t', comments='#')
+        rinner1 = drim_f/2.
+
     elif norm == 2:
-        
+
         os.chdir(paths + 'transient/')
-        
-        #load data for the transient crater 
-        t_trg, __, __, __, __, __, __, __  = np.loadtxt(modelname + '_tr.txt',delimiter='\t',comments='#')
-        
-        
-        modelnametr = normpath.split('/')[-2]                                                
+
+        # load data for the transient crater
+        t_trg, __, __, __, __, __, __, __ = np.loadtxt(
+            modelname + '_tr.txt', delimiter='\t', comments='#')
+
+        modelnametr = normpath.split('/')[-2]
         os.chdir(normpath + 'transient/')
-                                               
-        #load data for the transient crater modtr
-        t_tr1, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __  = np.loadtxt(modelnametr + '_tr.txt',delimiter='\t',comments='#')
-        
-        
+
+        # load data for the transient crater modtr
+        t_tr1, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __ = np.loadtxt(
+            modelnametr + '_tr.txt', delimiter='\t', comments='#')
+
         os.chdir(normpath + 'final/')
-        t_fnorm, __, __, __, __, drim_fnorm, __  = np.loadtxt(modelnametr + '_final.txt',delimiter='\t',comments='#')
-        rinner1 = drim_fnorm/2. 
-        
+        t_fnorm, __, __, __, __, drim_fnorm, __ = np.loadtxt(
+            modelnametr + '_final.txt', delimiter='\t', comments='#')
+        rinner1 = drim_fnorm/2.
+
     else:
         os.chdir(paths + 'transient/')
-        
-        #load data for the transient crater 1
-        t_trg, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __  = np.loadtxt(modelname + '_tr.txt',delimiter='\t',comments='#')
-        
-        
+
+        # load data for the transient crater 1
+        t_trg, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __ = np.loadtxt(
+            modelname + '_tr.txt', delimiter='\t', comments='#')
+
         os.chdir(paths + 'final/')
-        t_f, __, __, __, __, drim_f, __  = np.loadtxt(modelname + '_final.txt',delimiter='\t',comments='#')
-        
-                                                        
-    # if we want to show the transient crater                                 
+        t_f, __, __, __, __, drim_f, __ = np.loadtxt(
+            modelname + '_final.txt', delimiter='\t', comments='#')
+
+    # if we want to show the transient crater
     if showtransient:
         os.chdir(paths + 'transient/')
-        dataXY = np.loadtxt(modelname + '_XYtransientprofile.txt',delimiter='\t',comments='#')
-        X = dataXY[:,0]
-        Y = dataXY[:,1]
-        
-    os.chdir(path1)       
+        dataXY = np.loadtxt(
+            modelname + '_XYtransientprofile.txt', delimiter='\t', comments='#')
+        X = dataXY[:, 0]
+        Y = dataXY[:, 1]
+
+    os.chdir(path1)
     for i in range(mod1.nsteps):
-        step=mod1.readStep('Den',i)
-    
-        t1 = step.time       
+        step = mod1.readStep('Den', i)
+
+        t1 = step.time
         # plotting of the data
-        fig=plt.figure(figsize=(6,6))        
-        ax1=fig.add_subplot(111)
-        
-        if norm >= 1:            
-            ax1.pcolormesh(mod1.x/rinner1,mod1.y/rinner1,step.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            ax1.contour(mod1.xc/rinner1,mod1.yc/rinner1,step.cmc[0],1,colors='b',linewidths=4,zorder=4)
+        fig = plt.figure(figsize=(6, 6))
+        ax1 = fig.add_subplot(111)
+
+        if norm >= 1:
+            ax1.pcolormesh(mod1.x/rinner1, mod1.y/rinner1, step.mat,
+                           cmap='BrBG_r', vmin=-5., vmax=5., zorder=2)
+            ax1.contour(mod1.xc/rinner1, mod1.yc/rinner1,
+                        step.cmc[0], 1, colors='b', linewidths=4, zorder=4)
             if t1 >= t_trg:
                 if showtransient:
-                    ax1.plot(X/rinner1,Y/rinner1,"ro") # I need to show it only for a range
+                    # I need to show it only for a range
+                    ax1.plot(X/rinner1, Y/rinner1, "ro")
                 else:
                     None
             #ij1 = np.where((data_tr1[:,1]<=500.) & (data_tr1[:,0]<=Dr_tr1/2.))
             #ij2 = np.where((data_tr2[:,1]<=500.) & (data_tr2[:,0]<=Dr_tr2/2.))
-            
+
             if showhline:
-                ax1.hlines(0,0,1.2,'r',linewidths=4,zorder=1)
+                ax1.hlines(0, 0, 1.2, 'r', linewidths=4, zorder=1)
             else:
                 None
-                
-            ax1.set_xlim([0,1.2]) #-2000,0 ## -1500,1500
-        
+
+            ax1.set_xlim([0, 1.2])  # -2000,0 ## -1500,1500
+
             for ax in [ax1]:
                 ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                ax.set_ylim([-0.8,0.8])
-                
+                ax.tick_params('both', labelsize=16, length=10,
+                               width=2., which='major')
+                ax.set_ylim([-0.8, 0.8])
+
             for u in range(mod1.tracer_numu):
-                tru=mod1.tru[u]
+                tru = mod1.tru[u]
                 # Plot the tracers in horizontal lines, every 20 lines
-                for l in np.arange(0,len(tru.xlines),20):
+                for l in np.arange(0, len(tru.xlines), 20):
                     ax1.plot(step.xmark[tru.xlines[l]]/rinner1,
-                            step.ymark[tru.xlines[l]]/rinner1,
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
+                             step.ymark[tru.xlines[l]]/rinner1,
+                             c='k', marker='.', linestyle='None', markersize=1.0, zorder=3)
+
                 # Plot the tracers in horizontal lines, every 20 lines
-                for l in np.arange(0,len(tru.ylines),20):
+                for l in np.arange(0, len(tru.ylines), 20):
                     ax1.plot(step.xmark[tru.ylines[l]]/rinner1,
                              step.ymark[tru.ylines[l]]/rinner1,
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
+                             c='k', marker='.', linestyle='None', markersize=1.0, zorder=3)
 
-        elif norm == 0.5:       
-            ax1.pcolormesh(mod1.x/(mod1.cppr[0]*mod1.dx),mod1.y/(mod1.cppr[0]*mod1.dx),step.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            ax1.contour(mod1.xc/(mod1.cppr[0]*mod1.dx),mod1.yc/(mod1.cppr[0]*mod1.dx),step.cmc[0],1,colors='b',linewidths=4,zorder=4)
+        elif norm == 0.5:
+            ax1.pcolormesh(mod1.x/(mod1.cppr[0]*mod1.dx), mod1.y/(
+                mod1.cppr[0]*mod1.dx), step.mat, cmap='BrBG_r', vmin=-5., vmax=5., zorder=2)
+            ax1.contour(mod1.xc/(mod1.cppr[0]*mod1.dx), mod1.yc/(
+                mod1.cppr[0]*mod1.dx), step.cmc[0], 1, colors='b', linewidths=4, zorder=4)
             if t1 >= t_trg:
                 if showtransient:
-                    ax1.plot(X/(mod1.cppr[0]*mod1.dx),Y/(mod1.cppr[0]*mod1.dx),"ro") # I need to show it only for a range
+                    # I need to show it only for a range
+                    ax1.plot(X/(mod1.cppr[0]*mod1.dx),
+                             Y/(mod1.cppr[0]*mod1.dx), "ro")
                 else:
                     None
-                
+
             if showhline:
-                ax1.hlines(0,0,mod1.xhires[1]/(mod1.cppr[0]*mod1.dx),'r',linewidths=4,zorder=1) 
+                ax1.hlines(
+                    0, 0, mod1.xhires[1]/(mod1.cppr[0]*mod1.dx), 'r', linewidths=4, zorder=1)
             else:
                 None
-            ax1.set_xlim([0,mod1.xhires[1]/(mod1.cppr[0]*mod1.dx)]) #-2000,0 ## -1500,1500
-            
+            # -2000,0 ## -1500,1500
+            ax1.set_xlim([0, mod1.xhires[1]/(mod1.cppr[0]*mod1.dx)])
+
             for ax in [ax1]:
-                ax.set_ylim([mod1.yhires[0]/(mod1.cppr[0]*mod1.dy),mod1.yhires[1]/(mod1.cppr[0]*mod1.dy)])
+                ax.set_ylim([mod1.yhires[0]/(mod1.cppr[0]*mod1.dy),
+                             mod1.yhires[1]/(mod1.cppr[0]*mod1.dy)])
                 ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                
+                ax.tick_params('both', labelsize=16, length=10,
+                               width=2., which='major')
+
             for u in range(mod1.tracer_numu):
-                tru=mod1.tru[u]
+                tru = mod1.tru[u]
                 # Plot the tracers in horizontal lines, every 20 lines
-                for l in np.arange(0,len(tru.xlines),20):
+                for l in np.arange(0, len(tru.xlines), 20):
                     ax1.plot(step.xmark[tru.xlines[l]]/(mod1.cppr[0]*mod1.dx),
-                            step.ymark[tru.xlines[l]]/(mod1.cppr[0]*mod1.dx),
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
+                             step.ymark[tru.xlines[l]]/(mod1.cppr[0]*mod1.dx),
+                             c='k', marker='.', linestyle='None', markersize=1.0, zorder=3)
+
                 # Plot the tracers in horizontal lines, every 20 lines
-                for l in np.arange(0,len(tru.ylines),20):
+                for l in np.arange(0, len(tru.ylines), 20):
                     ax1.plot(step.xmark[tru.ylines[l]]/(mod1.cppr[0]*mod1.dx),
                              step.ymark[tru.ylines[l]]/(mod1.cppr[0]*mod1.dx),
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                    
-        else:       
-            ax1.pcolormesh(mod1.x,mod1.y,step.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            ax1.contour(mod1.xc,mod1.yc,step.cmc[0],1,colors='b',linewidths=4,zorder=4)
+                             c='k', marker='.', linestyle='None', markersize=1.0, zorder=3)
+
+        else:
+            ax1.pcolormesh(mod1.x, mod1.y, step.mat,
+                           cmap='BrBG_r', vmin=-5., vmax=5., zorder=2)
+            ax1.contour(mod1.xc, mod1.yc,
+                        step.cmc[0], 1, colors='b', linewidths=4, zorder=4)
             if t1 >= t_trg:
                 if showtransient:
-                    ax1.plot(X,Y,"ro") # I need to show it only for a range
+                    ax1.plot(X, Y, "ro")  # I need to show it only for a range
                 else:
                     None
-                
+
             if showhline:
-                ax1.hlines(0,0,(drim_f/2.)*1.2,'r',linewidths=4,zorder=1) 
+                ax1.hlines(0, 0, (drim_f/2.)*1.2, 'r', linewidths=4, zorder=1)
             else:
                 None
-            ax1.set_xlim([0,(drim_f/2.)*1.2]) #-2000,0 ## -1500,1500
-            
+            ax1.set_xlim([0, (drim_f/2.)*1.2])  # -2000,0 ## -1500,1500
+
             for ax in [ax1]:
-                ax.set_ylim([-(drim_f/2.)*0.8,(drim_f/2.)*0.8])
+                ax.set_ylim([-(drim_f/2.)*0.8, (drim_f/2.)*0.8])
                 ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                
+                ax.tick_params('both', labelsize=16, length=10,
+                               width=2., which='major')
+
             for u in range(mod1.tracer_numu):
-                tru=mod1.tru[u]
+                tru = mod1.tru[u]
                 # Plot the tracers in horizontal lines, every 20 lines
-                for l in np.arange(0,len(tru.xlines),20):
+                for l in np.arange(0, len(tru.xlines), 20):
                     ax1.plot(step.xmark[tru.xlines[l]],
-                            step.ymark[tru.xlines[l]],
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
+                             step.ymark[tru.xlines[l]],
+                             c='k', marker='.', linestyle='None', markersize=1.0, zorder=3)
+
                 # Plot the tracers in horizontal lines, every 20 lines
-                for l in np.arange(0,len(tru.ylines),20):
+                for l in np.arange(0, len(tru.ylines), 20):
                     ax1.plot(step.xmark[tru.ylines[l]],
                              step.ymark[tru.ylines[l]],
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                                
+                             c='k', marker='.', linestyle='None', markersize=1.0, zorder=3)
+
         if norm == 0:
-            ax1.set_xlabel("x (m)", fontsize = 20)
-            ax1.set_ylabel("y (m)", fontsize = 20)
+            ax1.set_xlabel("x (m)", fontsize=20)
+            ax1.set_ylabel("y (m)", fontsize=20)
             fig.tight_layout()
-            
+
         elif norm == 0.5:
-            ax1.set_xlabel(r"$x / a$", fontsize = 20)
-            ax1.set_ylabel(r"$y / a$", fontsize = 20)
+            ax1.set_xlabel(r"$x / a$", fontsize=20)
+            ax1.set_ylabel(r"$y / a$", fontsize=20)
             fig.tight_layout()
-            
+
         else:
-            ax1.set_xlabel(r"$x / R_{r}$", fontsize = 20)
-            ax1.set_ylabel(r"$y / R_{r}$", fontsize = 20)
-            fig.tight_layout()  
-        
+            ax1.set_xlabel(r"$x / R_{r}$", fontsize=20)
+            ax1.set_ylabel(r"$y / R_{r}$", fontsize=20)
+            fig.tight_layout()
+
         if timei == 'normal':
-            ax1.set_title(r"$\mathit{t} = " + str(np.around(t1,decimals=2)) + " " +" s$",position=(0.5, 0.9),fontsize=18)
+            ax1.set_title(r"$\mathit{t} = " + str(np.around(t1, decimals=2)
+                                                  ) + " " + " s$", position=(0.5, 0.9), fontsize=18)
         elif timei == 'pen':
-            ax1.set_title(r"$\mathit{t} = " + str(np.around(t1,decimals=2)) + " " +" s, $" + " " + "$t / t_s = $" + str(np.around(t1/((mod1.cppr[0]*mod1.dx*2.) / (mod1.objvel)),decimals=2)),position=(0.5, 0.9),fontsize=18)
+            ax1.set_title(r"$\mathit{t} = " + str(np.around(t1, decimals=2)) + " " + " s, $" + " " + "$t / t_s = $" + str(
+                np.around(t1/((mod1.cppr[0]*mod1.dx*2.) / (mod1.objvel)), decimals=2)), position=(0.5, 0.9), fontsize=18)
         else:
-            ax1.set_title(r"$\mathit{t} = " + str(np.around(t1,decimals=2)) + " " +" s, $" + " " + "$\zeta$ = $" + str(np.around(t1/t_trg,decimals=2)),position=(0.5, 0.9),fontsize=18)
-            
+            ax1.set_title(r"$\mathit{t} = " + str(np.around(t1, decimals=2)) + " " + " s, $" + " " +
+                          "$\zeta$ = $" + str(np.around(t1/t_trg, decimals=2)), position=(0.5, 0.9), fontsize=18)
+
         st = fig.suptitle(lbl, fontsize=22)
         st.set_y(0.97)
         st.set_x(0.55)
         fig.subplots_adjust(top=0.9)
-        
+
         if norm == 0:
-            figtitle= modelname + '_' + str(int(i)).zfill(3)+ ".png"
-            fig.savefig(paths + 'evolution/plots/morphology/absolute/' + figtitle,dpi=300)
+            figtitle = modelname + '_' + str(int(i)).zfill(3) + ".png"
+            fig.savefig(
+                paths + 'evolution/plots/morphology/absolute/' + figtitle, dpi=300)
         elif norm == 0.5:
-            figtitle= modelname + '_' + str(int(i)).zfill(3)+ ".png"
-            fig.savefig(paths + 'evolution/plots/morphology/norm_proj/' + figtitle,dpi=300)
+            figtitle = modelname + '_' + str(int(i)).zfill(3) + ".png"
+            fig.savefig(
+                paths + 'evolution/plots/morphology/norm_proj/' + figtitle, dpi=300)
         elif norm == 1:
-            figtitle= 'itself_norm_' + modelname + '_' + str(int(i)).zfill(3)+ ".png"
-            fig.savefig(paths + 'evolution/plots/morphology/norm_its/' + figtitle,dpi=300)
+            figtitle = 'itself_norm_' + modelname + \
+                '_' + str(int(i)).zfill(3) + ".png"
+            fig.savefig(
+                paths + 'evolution/plots/morphology/norm_its/' + figtitle, dpi=300)
         else:
-            figtitle= 'norm_' + modelname + '_' + str(int(i)).zfill(3)+ ".png"
-            fig.savefig(paths + 'evolution/plots/morphology/norm/' + figtitle,dpi=300)
+            figtitle = 'norm_' + modelname + \
+                '_' + str(int(i)).zfill(3) + ".png"
+            fig.savefig(
+                paths + 'evolution/plots/morphology/norm/' + figtitle, dpi=300)
         plt.close()
-        
+
     mod1.closeFile()
-            
+
 
 '''
 ***********************************************************************
 '''
 
+
 def zoom(zoom_id, norm, mod, rrim):
-    
     '''
     example:
     zoom_id = 'hires' # 'close'; 'mid', 'hires'; 'all'
     norm = 2
     rrim = rinner1
-    
+
     extentx, extenty = zoom(zoom_id, norm, mod1, rrim)
     '''
-    
-    zid = np.array(['close','mid','hires','all'])
-    
+
+    zid = np.array(['close', 'mid', 'hires', 'all'])
+
     idx = np.where(zid == zoom_id)[0][0]
-    
+
     if norm == 0:
         if idx == 0:
-            extentx = [0.0,1.2*rrim]
-            extenty = [-0.8*rrim,0.8*rrim]
-        
+            extentx = [0.0, 1.2*rrim]
+            extenty = [-0.8*rrim, 0.8*rrim]
+
         elif idx == 1:
-                extentx = [0.0,2.0*rrim]
-                extenty = [-2.0*rrim,0.8*rrim]
-                
+            extentx = [0.0, 2.0*rrim]
+            extenty = [-2.0*rrim, 0.8*rrim]
+
         elif idx == 2:
-            extentx = [0.0,mod.xhires[1]]
-            extenty = mod.yhires     
-            
+            extentx = [0.0, mod.xhires[1]]
+            extenty = mod.yhires
+
         else:
             extentx = [0.0, np.max(mod.xc)]
             extenty = [np.min(mod.yc), np.max(mod.yc)]
-        
+
     else:
         if idx == 0:
-            extentx = [0.0,1.2]
-            extenty = [-0.8,0.8]
-            
+            extentx = [0.0, 1.2]
+            extenty = [-0.8, 0.8]
+
         elif idx == 1:
-            extentx = [0.0,2.0]
-            extenty = [-2.0,0.8]
-            
+            extentx = [0.0, 2.0]
+            extenty = [-2.0, 0.8]
+
         elif idx == 2:
             extentx = [0.0, mod.xhires[1]/rrim]
             extenty = mod.yhires/rrim
-            
+
         else:
             extentx = [0.0, np.max(mod.xc)/rrim]
             extenty = [np.min(mod.yc)/rrim, np.max(mod.yc)/rrim]
-            
+
     return extentx, extenty
-    
+
+
 '''
 ***********************************************************************
 '''
 
+
 def field_definition(param, paths):
-    
     '''
     example:
     param = 'Por'
     paths = '/work/nilscp/iSALE/isaleruns/velocity/ndata/C00P10F06LONG_L800/'
-    
+
     fld_param, fld_name, fld_cmap, fld_unit, fld_factor, npath = field_definition(param, paths)
     '''
 
-    fld = np.array(['Den','Tmp', 'Pre', 'Sie', 'Yld', 'Dam', 'Alp', 'Por', 'TPS', 'YAc'])
-    
-    fld_param = np.array(['Den','Tmp', 'Pre', 'Sie', 'Yld', 'Dam', 'Alp', 'Alp', 'TPS', 'YAc'])
-    
+    fld = np.array(['Den', 'Tmp', 'Pre', 'Sie', 'Yld',
+                    'Dam', 'Alp', 'Por', 'TPS', 'YAc'])
+
+    fld_param = np.array(['Den', 'Tmp', 'Pre', 'Sie', 'Yld',
+                          'Dam', 'Alp', 'Alp', 'TPS', 'YAc'])
+
     fld_name = np.array(['Density', 'Temperature', 'Pressure', 'Specific internal energy',
-                'Yield strength', 'Damage', 'Distension', 'Porosity', 'Total plastic strain',
-                'Acoustic fluidisation strength'])
-    
+                         'Yield strength', 'Damage', 'Distension', 'Porosity', 'Total plastic strain',
+                         'Acoustic fluidisation strength'])
+
     fld_folder = np.array(['Density', 'Temperature', 'Pressure', 'Specific_internal_energy',
-                'Yield_strength', 'Damage', 'Distension', 'Porosity', 'Total_plastic_strain',
-                'Acoustic_fluidisation_strength'])
-    
-    fld_cmap = np.array(['viridis','seismic','autumn','bwr',
-                         'autumn','RdPu','gray_r','gray_r', 'Reds_r',
+                           'Yield_strength', 'Damage', 'Distension', 'Porosity', 'Total_plastic_strain',
+                           'Acoustic_fluidisation_strength'])
+
+    fld_cmap = np.array(['viridis', 'seismic', 'autumn', 'bwr',
+                         'autumn', 'RdPu', 'gray_r', 'gray_r', 'Reds_r',
                          'autumn'])
-    
+
     fld_unit = np.array(['kg/m^{3}', 'Kelvin', 'GPa', 'J',
                          'GPa', 'Damage', 'Distention', 'Percentage', 'Strain',
                          'GPa'])
-    
-    fld_factor = np.array([1.,1.,1e9,1.,1e9,1.,1.,1.,1.,1e9])
-    
+
+    fld_factor = np.array([1., 1., 1e9, 1., 1e9, 1., 1., 1., 1., 1e9])
+
     idx = np.where(fld == param)[0][0]
-    
+
     param1 = fld_param[idx]
     name = fld_name[idx]
     cmap = fld_cmap[idx]
     unit = fld_unit[idx]
     factor = fld_factor[idx]
     npath = paths + 'evolution/plots/' + fld_folder[idx] + '/'
-    
+
     if not os.path.exists(npath):
         os.makedirs(npath)
-        
+
     return param1, name, cmap, unit, factor, npath
-   
+
+
 '''
 ***********************************************************************
 '''
 
+
 def field(param, path1, paths, norm, normpath, zoom_id, vmiin, vmaax, lbl):
-    
     '''
     param = 'Por'  
     path1 = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/layering/AUG/collapse/results/C00P10F06LONG_L800/'
@@ -502,10 +537,10 @@ def field(param, path1, paths, norm, normpath, zoom_id, vmiin, vmaax, lbl):
     vmaax = 20.
 
     lbl = r"$\mathit{L} = 800 m"
-    
+
     field(param, path1, paths, norm, normpath, zoom_id, vmiin, vmaax, lbl)
-    
-    
+
+
     Field list:
     [['Cm1', 'Concentration, mat. 1'],
      ['Cm2', 'Concentration, mat. 2'],
@@ -525,203 +560,216 @@ def field(param, path1, paths, norm, normpath, zoom_id, vmiin, vmaax, lbl):
      ['TrP', 'Tracer peak pressure'],
      ['TrT', 'Tracer peak temperature']]
     '''
-    
-    plt.ioff() #figures does not pop up
-    
+
+    plt.ioff()  # figures does not pop up
+
     os.chdir(path1)
     mod1 = psp.opendatfile('jdata.dat')
-        
+
     # field list (should I make a function out of it?)
-    fld_param, fld_name, fld_cmap, fld_unit, fld_factor, npath = field_definition(param, paths)
-    
+    fld_param, fld_name, fld_cmap, fld_unit, fld_factor, npath = field_definition(
+        param, paths)
+
     # update label
     lbl = lbl + ", " + fld_name + "$"
-    
+
     # modelname
     modelname = path1.split('/')[-2]
-    
-    ## loading ot the data
+
+    # loading ot the data
     ###########################################################################
-    if norm == 1:                
+    if norm == 1:
         os.chdir(paths + 'transient/')
-        
-        #load data for the transient crater 1
-        t_trg, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __  = np.loadtxt(modelname + '_tr.txt',delimiter='\t',comments='#')
-        
-        
+
+        # load data for the transient crater 1
+        t_trg, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __ = np.loadtxt(
+            modelname + '_tr.txt', delimiter='\t', comments='#')
+
         os.chdir(paths + 'final/')
-        t_f, __, __, __, __, drim_f, __  = np.loadtxt(modelname + '_final.txt',delimiter='\t',comments='#')
-        rinner1 = drim_f/2.              
-                           
+        t_f, __, __, __, __, drim_f, __ = np.loadtxt(
+            modelname + '_final.txt', delimiter='\t', comments='#')
+        rinner1 = drim_f/2.
+
     elif norm == 2:
-        
+
         os.chdir(paths + 'transient/')
-        
-        #load data for the transient crater 
-        t_trg, __, __, __, __, __, __, __  = np.loadtxt(modelname + '_tr.txt',delimiter='\t',comments='#')
-        
-        
-        modelnametr = normpath.split('/')[-2]                                                
+
+        # load data for the transient crater
+        t_trg, __, __, __, __, __, __, __ = np.loadtxt(
+            modelname + '_tr.txt', delimiter='\t', comments='#')
+
+        modelnametr = normpath.split('/')[-2]
         os.chdir(normpath + 'transient/')
-                                               
-        #load data for the transient crater modtr
-        t_tr1, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __  = np.loadtxt(modelnametr + '_tr.txt',delimiter='\t',comments='#')
-        
-        
+
+        # load data for the transient crater modtr
+        t_tr1, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __ = np.loadtxt(
+            modelnametr + '_tr.txt', delimiter='\t', comments='#')
+
         os.chdir(normpath + 'final/')
-        t_fnorm, __, __, __, __, drim_fnorm, __  = np.loadtxt(modelnametr + '_final.txt',delimiter='\t',comments='#')
-        rinner1 = drim_fnorm/2. 
-        
+        t_fnorm, __, __, __, __, drim_fnorm, __ = np.loadtxt(
+            modelnametr + '_final.txt', delimiter='\t', comments='#')
+        rinner1 = drim_fnorm/2.
+
     else:
         os.chdir(paths + 'transient/')
-        
-        #load data for the transient crater 1
-        t_trg, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __  = np.loadtxt(modelname + '_tr.txt',delimiter='\t',comments='#')
-        
-        
+
+        # load data for the transient crater 1
+        t_trg, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __ = np.loadtxt(
+            modelname + '_tr.txt', delimiter='\t', comments='#')
+
         os.chdir(paths + 'final/')
-        t_f, __, __, __, __, drim_f, __  = np.loadtxt(modelname + '_final.txt',delimiter='\t',comments='#')
-                                                      
+        t_f, __, __, __, __, drim_f, __ = np.loadtxt(
+            modelname + '_final.txt', delimiter='\t', comments='#')
+
     ###########################################################################
-    
 
     # choosing the degree of the zooming on the figure
     # get the extent
     extentx, extenty = zoom(zoom_id, norm, mod1, rinner1)
-    
-    
-    # looping of 
-    os.chdir(path1)       
+
+    # looping of
+    os.chdir(path1)
     for i in range(mod1.nsteps):
-        step=mod1.readStep(fld_param.data[:],i)
-    
-        t1 = step.time       
+        step = mod1.readStep(fld_param.data[:], i)
+
+        t1 = step.time
         # plotting of the data
-        fig=plt.figure(figsize=(6,6))        
-        ax1=fig.add_subplot(111)
-        
-        #changing the vmin and vmax every step will change the value everytime
+        fig = plt.figure(figsize=(6, 6))
+        ax1 = fig.add_subplot(111)
+
+        # changing the vmin and vmax every step will change the value everytime
         # maybe I should define manually
         if norm >= 1:
-            if param == 'Por':           
-                cax = ax1.pcolormesh(mod1.x/rinner1,mod1.y/rinner1,(1. - (1./step.data[0]))*100., 
-                               vmin = vmiin, 
-                               vmax = vmaax, 
-                               cmap=fld_cmap, zorder=2)
+            if param == 'Por':
+                cax = ax1.pcolormesh(mod1.x/rinner1, mod1.y/rinner1, (1. - (1./step.data[0]))*100.,
+                                     vmin=vmiin,
+                                     vmax=vmaax,
+                                     cmap=fld_cmap, zorder=2)
             else:
-                cax = ax1.pcolormesh(mod1.x/rinner1,mod1.y/rinner1,step.data[0]/fld_factor, 
-                               vmin = vmiin, 
-                               vmax = vmaax, 
-                               cmap=fld_cmap, zorder=2)
-            
-            ax1.contour(mod1.xc/rinner1,mod1.yc/rinner1,step.cmc[0],1,colors='k',linewidths=2,zorder=4)                
-            ax1.set_xlim([0,extentx[1]]) 
-        
+                cax = ax1.pcolormesh(mod1.x/rinner1, mod1.y/rinner1, step.data[0]/fld_factor,
+                                     vmin=vmiin,
+                                     vmax=vmaax,
+                                     cmap=fld_cmap, zorder=2)
+
+            ax1.contour(mod1.xc/rinner1, mod1.yc/rinner1,
+                        step.cmc[0], 1, colors='k', linewidths=2, zorder=4)
+            ax1.set_xlim([0, extentx[1]])
+
             for ax in [ax1]:
                 ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                ax.set_ylim([extenty[0],extenty[1]])
+                ax.tick_params('both', labelsize=16, length=10,
+                               width=2., which='major')
+                ax.set_ylim([extenty[0], extenty[1]])
             cbar = fig.colorbar(cax)
             cbar.ax.tick_params(labelsize=15)
-            cbar.set_label('$' + fld_unit + '$', labelpad = -42.5, y = 1.07, fontsize = 15, rotation=0)
-                    
+            cbar.set_label('$' + fld_unit + '$', labelpad=-
+                           42.5, y=1.07, fontsize=15, rotation=0)
+
         else:
             # need to change vmin and vmax
-            if param == 'Por':            
-                cax = ax1.pcolormesh(mod1.x,mod1.y,(1. - (1./step.data[0]))*100.,
-                                     vmin=vmiin, vmax = vmaax, cmap=fld_cmap, zorder=2)
+            if param == 'Por':
+                cax = ax1.pcolormesh(mod1.x, mod1.y, (1. - (1./step.data[0]))*100.,
+                                     vmin=vmiin, vmax=vmaax, cmap=fld_cmap, zorder=2)
             else:
-                cax = ax1.pcolormesh(mod1.x,mod1.y,step.data[0]/fld_factor,
-                                     vmin=vmiin, vmax = vmaax, cmap=fld_cmap, zorder=2)
-            
-            ax1.contour(mod1.xc,mod1.yc,step.cmc[0],1,colors='k',linewidths=2,zorder=4)
-            ax1.set_xlim([0,extentx[1]]) #-2000,0 ## -1500,1500
-            
+                cax = ax1.pcolormesh(mod1.x, mod1.y, step.data[0]/fld_factor,
+                                     vmin=vmiin, vmax=vmaax, cmap=fld_cmap, zorder=2)
+
+            ax1.contour(mod1.xc, mod1.yc,
+                        step.cmc[0], 1, colors='k', linewidths=2, zorder=4)
+            ax1.set_xlim([0, extentx[1]])  # -2000,0 ## -1500,1500
+
             for ax in [ax1]:
-                ax.set_ylim([extenty[0],extenty[1]])
+                ax.set_ylim([extenty[0], extenty[1]])
                 ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
+                ax.tick_params('both', labelsize=16, length=10,
+                               width=2., which='major')
             cbar = fig.colorbar(cax)
             cbar.ax.tick_params(labelsize=15)
-            cbar.set_label('$' + fld_unit + '$', labelpad = -42.5, y = 1.07, fontsize = 15, rotation=0)
-                                
+            cbar.set_label('$' + fld_unit + '$', labelpad=-
+                           42.5, y=1.07, fontsize=15, rotation=0)
+
         if norm == 0:
-            ax1.set_xlabel("x (m)", fontsize = 20)
-            ax1.set_ylabel("y (m)", fontsize = 20)
+            ax1.set_xlabel("x (m)", fontsize=20)
+            ax1.set_ylabel("y (m)", fontsize=20)
             fig.tight_layout()
-            
+
         else:
-            ax1.set_xlabel(r"$x / R_{r}$", fontsize = 20)
-            ax1.set_ylabel(r"$y / R_{r}$", fontsize = 20)
-            fig.tight_layout()  
-        
-        
-        ax1.set_title(r"$\mathit{t} = " + str(np.around(t1,decimals=2)) + " " +" s, $" + " " + "$\zeta$ = " + str(np.around(t1/t_trg,decimals=2)),position=(0.5, 0.9),fontsize=18)
+            ax1.set_xlabel(r"$x / R_{r}$", fontsize=20)
+            ax1.set_ylabel(r"$y / R_{r}$", fontsize=20)
+            fig.tight_layout()
+
+        ax1.set_title(r"$\mathit{t} = " + str(np.around(t1, decimals=2)) + " " + " s, $" + " " +
+                      "$\zeta$ = " + str(np.around(t1/t_trg, decimals=2)), position=(0.5, 0.9), fontsize=18)
         st = fig.suptitle(lbl, fontsize=20)
         st.set_y(0.97)
         st.set_x(0.5)
         fig.subplots_adjust(top=0.9)
-        
+
         if norm == 0:
-            figtitle= modelname + '_' + str(int(i)).zfill(3)+ ".png"
-            fig.savefig(npath + figtitle,dpi=300)
+            figtitle = modelname + '_' + str(int(i)).zfill(3) + ".png"
+            fig.savefig(npath + figtitle, dpi=300)
         elif norm == 1:
-            figtitle= 'itself_norm_' + modelname + '_' + str(int(i)).zfill(3)+ ".png"
-            fig.savefig(npath + figtitle,dpi=300)
+            figtitle = 'itself_norm_' + modelname + \
+                '_' + str(int(i)).zfill(3) + ".png"
+            fig.savefig(npath + figtitle, dpi=300)
         else:
-            figtitle= 'norm_' + modelname + '_' + str(int(i)).zfill(3)+ ".png"
-            fig.savefig(npath + figtitle,dpi=300)
+            figtitle = 'norm_' + modelname + \
+                '_' + str(int(i)).zfill(3) + ".png"
+            fig.savefig(npath + figtitle, dpi=300)
         plt.close()
-        
+
     mod1.closeFile()
+
 
 '''
 ***********************************************************************
 '''
 
-def main(pathdata,folders,pathplots):
-    
+
+def main(pathdata, folders, pathplots):
     '''
     description:
     routine that plots both the transient, excavated and final cavities.
     This routine is useful to see whether the different crater dimensions by
     the scripts in crater.py and ejecta.py managed to perform well (i.e., this is
     visual quality assesment of the results)
-    
+
     inputs:
     pathdata: path where the text files have been stored (text files that are obtained
     from running the main.py script)
-    
+
     folders: all modelcases that need to be plotted
-    
+
     pathplots: saving plot directory
     '''
-        
+
     for modelname in folders:
-        transient(pathdata,modelname,pathplots)
-        final(pathdata,modelname,pathplots)
-        excavated(pathdata,modelname,pathplots)
+        transient(pathdata, modelname, pathplots)
+        final(pathdata, modelname, pathplots)
+        excavated(pathdata, modelname, pathplots)
         # evoplot
-    
+
     print "ROCK'N ROLL"
+
+
 '''
 ***********************************************************************
 '''
 
-def transient(pathdata,modelname,pathplots):
-    
+
+def transient(pathdata, modelname, pathplots):
     '''
     description:
     routine that plots transient crater dimensions
-    
+
     inputs:
     pathdata: path where the text files have been stored (text files that are obtained
     from running the main.py script)
-    
+
     folders: all modelcases that need to be plotted
-    
+
     pathplots: saving plot directory
-    
+
     example:
     pathdata = '/media/nilscp/Zell/Collapse/data/'
     modelname = 'C00P20F08_L250'
@@ -729,156 +777,167 @@ def transient(pathdata,modelname,pathplots):
     transient(pathdata,modelname,pathplots)
     '''
 
-    # should be outside of the loop        
+    # should be outside of the loop
     if not os.path.exists(pathplots):
         os.makedirs(pathplots)
-    
+
     os.chdir(pathdata + modelname + '/transient/')
-    
-    t, da, Da, V, h, Dr, Vr, __  = np.loadtxt(modelname + '_tr.txt',delimiter='\t',comments='#')
-    dataXY = np.loadtxt(modelname + '_XYtransientprofile.txt',delimiter='\t',comments='#')
-    X = dataXY[:,0]
-    Y = dataXY[:,1]
-    
-    fig=plt.figure(figsize=(12,6))
-    ax=fig.add_subplot(111)
-    ax.plot(X,Y,"ro",zorder=2)
-    ax.hlines(0,np.min(X),np.max(X),'k',linewidth=3)
-    ax.plot(Da/2.,0,'yo',ms=10,label='Ra: apparent radius')
-    ax.plot(Dr/2.,h,'co',ms=10,label='Drim and hrim')
-    ax.hlines(-da,np.min(X),np.max(X),'b',linewidth=3, label = 'da: apparent depth')
+
+    t, da, Da, V, h, Dr, Vr, __ = np.loadtxt(
+        modelname + '_tr.txt', delimiter='\t', comments='#')
+    dataXY = np.loadtxt(modelname + '_XYtransientprofile.txt',
+                        delimiter='\t', comments='#')
+    X = dataXY[:, 0]
+    Y = dataXY[:, 1]
+
+    fig = plt.figure(figsize=(12, 6))
+    ax = fig.add_subplot(111)
+    ax.plot(X, Y, "ro", zorder=2)
+    ax.hlines(0, np.min(X), np.max(X), 'k', linewidth=3)
+    ax.plot(Da/2., 0, 'yo', ms=10, label='Ra: apparent radius')
+    ax.plot(Dr/2., h, 'co', ms=10, label='Drim and hrim')
+    ax.hlines(-da, np.min(X), np.max(X), 'b',
+              linewidth=3, label='da: apparent depth')
     ax.legend(loc='center right')
-    ax.set_xlabel('X (m)',fontsize=18)
-    ax.set_ylabel('Y (m)',fontsize=18)
-    ax.tick_params('both', labelsize=16,length=10, width=1., which='major')
+    ax.set_xlabel('X (m)', fontsize=18)
+    ax.set_ylabel('Y (m)', fontsize=18)
+    ax.tick_params('both', labelsize=16, length=10, width=1., which='major')
     fig.tight_layout()
-    st = fig.suptitle(modelname + ' transient profile',fontsize=18)
+    st = fig.suptitle(modelname + ' transient profile', fontsize=18)
     st.set_y(0.95)
     fig.subplots_adjust(top=0.9)
-    figtitle= modelname + ' transient_profile.png'
-    fig.savefig(pathplots+figtitle,dpi=300)
+    figtitle = modelname + ' transient_profile.png'
+    fig.savefig(pathplots+figtitle, dpi=300)
     plt.close()
-    
-    
+
+
 '''
 ***********************************************************************
 '''
 
 
-def final(pathdata,modelname,pathplots):
-    
+def final(pathdata, modelname, pathplots):
     '''
     description:
     routine that plots final crater dimensions
-    
+
     inputs:
     pathdata: path where the text files have been stored (text files that are obtained
     from running the main.py script)
-    
+
     folders: all modelcases that need to be plotted
-    
+
     pathplots: saving plot directory
-    
+
     example:
     pathdata = '/media/nilscp/Zell/Collapse/data/'
     modelname = 'C00P20F08_L250'
     pathplots = '/media/nilscp/Zell/Collapse/rplots/'
     final(pathdata,modelname,pathplots)
     '''
-    
-    # should be outside of the loop        
+
+    # should be outside of the loop
     if not os.path.exists(pathplots):
         os.makedirs(pathplots)
-    
+
     os.chdir(pathdata + modelname + '/final/')
-    
-    t, da, Da, V, h, Dr, Vr  = np.loadtxt(modelname + '_final.txt',delimiter='\t',comments='#')
-    dataXY = np.loadtxt(modelname + '_XYfinalprofile.txt',delimiter='\t',comments='#')
-    X = dataXY[:,0]
-    Y = dataXY[:,1]
-    
-    fig=plt.figure(figsize=(12,6))
-    ax=fig.add_subplot(111)
-    ax.plot(X,Y,"ro",zorder=2)
-    ax.hlines(0,np.min(X),np.max(X),'k',linewidth=3)
-    ax.plot(Da/2.,0,'yo',ms=10,label='Ra: apparent radius')
-    ax.plot(Dr/2.,h,'co',ms=10,label='Drim and hrim')
-    ax.hlines(-da,np.min(X),np.max(X),'b',linewidth=3, label = 'da: apparent depth')
+
+    t, da, Da, V, h, Dr, Vr = np.loadtxt(
+        modelname + '_final.txt', delimiter='\t', comments='#')
+    dataXY = np.loadtxt(modelname + '_XYfinalprofile.txt',
+                        delimiter='\t', comments='#')
+    X = dataXY[:, 0]
+    Y = dataXY[:, 1]
+
+    fig = plt.figure(figsize=(12, 6))
+    ax = fig.add_subplot(111)
+    ax.plot(X, Y, "ro", zorder=2)
+    ax.hlines(0, np.min(X), np.max(X), 'k', linewidth=3)
+    ax.plot(Da/2., 0, 'yo', ms=10, label='Ra: apparent radius')
+    ax.plot(Dr/2., h, 'co', ms=10, label='Drim and hrim')
+    ax.hlines(-da, np.min(X), np.max(X), 'b',
+              linewidth=3, label='da: apparent depth')
     ax.legend(loc='center right')
-    ax.set_xlabel('X (m)',fontsize=18)
-    ax.set_ylabel('Y (m)',fontsize=18)
-    ax.tick_params('both', labelsize=16,length=10, width=1., which='major')
+    ax.set_xlabel('X (m)', fontsize=18)
+    ax.set_ylabel('Y (m)', fontsize=18)
+    ax.tick_params('both', labelsize=16, length=10, width=1., which='major')
     fig.tight_layout()
-    st = fig.suptitle(modelname + ' final profile',fontsize=18)
+    st = fig.suptitle(modelname + ' final profile', fontsize=18)
     st.set_y(0.95)
     fig.subplots_adjust(top=0.9)
-    figtitle= modelname + ' final_profile.png'
-    fig.savefig(pathplots+figtitle,dpi=300)
+    figtitle = modelname + ' final_profile.png'
+    fig.savefig(pathplots+figtitle, dpi=300)
     plt.close()
-    
-    
+
+
 '''
 ***********************************************************************
 '''
 
-def excavated(pathdata,modelname,pathplots):
-    
+
+def excavated(pathdata, modelname, pathplots):
     '''
     description:
     routine that plots the excavated crater dimensions
-    
+
     inputs:
     pathdata: path where the text files have been stored (text files that are obtained
     from running the main.py script)
-    
+
     folders: all modelcases that need to be plotted
-    
+
     pathplots: saving plot directory
-    
+
     example:
     pathdata = '/media/nilscp/Zell/Collapse/data/'
     modelname = 'C00P20F08_L250'
     pathplots = '/media/nilscp/Zell/Collapse/rplots/'
     excavated(pathdata,modelname,pathplots)
     '''
-    
-    # should be outside of the loop        
+
+    # should be outside of the loop
     if not os.path.exists(pathplots):
         os.makedirs(pathplots)
-    
+
     os.chdir(pathdata + modelname + '/excavated/')
-    
+
     # load excavated data
-    Ve, de, De = np.loadtxt(modelname + '_excavated.txt',delimiter='\t',comments="#") # possible miss something at the end
-    Z = np.loadtxt(modelname + '_tracersXY_excavated.txt',delimiter='\t',comments="#") # possible miss something at the end
-    X = Z[:,0]
-    Y = Z[:,1]
-    
-    #load transient profile
-    os.chdir(pathdata + modelname + '/transient/')    
-    dataXY = np.loadtxt(modelname + '_XYtransientprofile.txt',delimiter='\t',comments='#')
-    X2 = dataXY[:,0]
-    Y2 = dataXY[:,1]
-    
-    fig=plt.figure(figsize=(12,6))
-    ax=fig.add_subplot(111)
-    ax.plot(X,Y,"bo")
-    ax.plot(X2,Y2,"ro")
-    ax.hlines(de,np.min(X2),np.max(X2),'b',linewidth=3, label = 'de: apparent excavated depth')
-    ax.plot(De/2.,0,'yo',ms=10,label='Re: apparent excavated radius')
+    # possible miss something at the end
+    Ve, de, De = np.loadtxt(modelname + '_excavated.txt',
+                            delimiter='\t', comments="#")
+    Z = np.loadtxt(modelname + '_tracersXY_excavated.txt', delimiter='\t',
+                   comments="#")  # possible miss something at the end
+    X = Z[:, 0]
+    Y = Z[:, 1]
+
+    # load transient profile
+    os.chdir(pathdata + modelname + '/transient/')
+    dataXY = np.loadtxt(modelname + '_XYtransientprofile.txt',
+                        delimiter='\t', comments='#')
+    X2 = dataXY[:, 0]
+    Y2 = dataXY[:, 1]
+
+    fig = plt.figure(figsize=(12, 6))
+    ax = fig.add_subplot(111)
+    ax.plot(X, Y, "bo")
+    ax.plot(X2, Y2, "ro")
+    ax.hlines(de, np.min(X2), np.max(X2), 'b', linewidth=3,
+              label='de: apparent excavated depth')
+    ax.plot(De/2., 0, 'yo', ms=10, label='Re: apparent excavated radius')
     ax.legend(loc='lower right')
-    ax.set_xlabel('X (m)',fontsize=18)
-    ax.set_ylabel('Y (m)',fontsize=18)
-    ax.tick_params('both', labelsize=16,length=10, width=1., which='major')
+    ax.set_xlabel('X (m)', fontsize=18)
+    ax.set_ylabel('Y (m)', fontsize=18)
+    ax.tick_params('both', labelsize=16, length=10, width=1., which='major')
     fig.tight_layout()
-    st = fig.suptitle(modelname + ' excavated and transient profile',fontsize=18)
+    st = fig.suptitle(
+        modelname + ' excavated and transient profile', fontsize=18)
     st.set_y(0.95)
     fig.subplots_adjust(top=0.9)
-    figtitle= modelname + ' excavated_profile.png'
-    fig.savefig(pathplots+figtitle,dpi=300)
+    figtitle = modelname + ' excavated_profile.png'
+    fig.savefig(pathplots+figtitle, dpi=300)
     plt.close()
-    
-    
+
+
 '''
 ***********************************************************************
 
