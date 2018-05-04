@@ -67,10 +67,7 @@ def loadej(pathdata, modelname):
 
     pathdata = '/work/nilscp/iSALE/isaleruns/data/ejecta/length/'
     modelname = 'a4km'
-    (t_tr, da_tr, Da_tr, V_tr, h_tr, Dr_tr, Vr_tr, 
-            t, da, Da, V, h, Dr, Vr,
-            Ve, de, De,
-            X_tr, Y_tr, X, Y, Xe, Ye) = loaddata(pathdata, modelname)
+    (tracer_ix, ts, time, density, mat, v, angle, xpos, tair, dland, n) = loadej(pathdata, modelname)
     '''
 
     #
@@ -83,21 +80,140 @@ def loadej(pathdata, modelname):
     # extract the columns from the data
     tracer_ix = data[:, 0]
     ts = data[:, 1]
-    v = data[:, 2]
-    angle = data[:, 3]
-    xpos = data[:, 4]
-    tair = data[:, 5]
-    dland = data[:, 6]
+    time = data[:,2]
+    density = data[:,3]
+    mat = data[:,4]
+    v = data[:, 5]
+    angle = data[:, 6]
+    xpos = data[:, 7]
+    tair = data[:, 8]
+    dland = data[:, 9]
+    
+    n = np.loadtxt(modelname + '_ntracers.txt', delimiter='\t', comments='#')
+
+    return (tracer_ix, ts, time, density, mat, v, angle, xpos, tair, dland, n)
+
+'''
+***********************************************************************
+'''
+def loadej2(pathdata, modelname):
+    '''
+    LOAD ALL THE DATA    
+
+    path = '/work/nilscp/iSALE/isaleruns/data/ejecta/velocity/'
+    'a4km_U2kms'
+    (tracer_ix, ts, v, angle, xpos, tair, tair2, dland, dland2, n) = loadej2(path, modelname)
+    '''
+
+    #
+    os.chdir(pathdata + modelname + '/ejtracers/')
+
+    # (tracer_ix, ts, v, angle, xpos, tair, dland)  = np.loadtxt(modelname + '_ejtracers.txt',delimiter=';',comments='#')
+    data = np.loadtxt(modelname + '_ejtracers.txt',
+                      delimiter=';', comments='#')
+    
+    data2 = np.loadtxt(modelname + '_ejtracers2.txt',
+                      delimiter=';', comments='#')
+    # extract the columns from the data
+    tracer_ix = data[:, 0]
+    ts = data[:, 1]
+    time = data[:,2]
+    density = data[:,3]
+    mat = data[:,4]
+    v = data[:, 5]
+    angle = data[:, 6]
+    xpos = data[:, 7]
+    tair = data[:, 8]
+    dland = data[:, 9]
+    tair2 = data2[:, 0]
+    dland2 = data2[:, 1]
 
     n = np.loadtxt(modelname + '_ntracers.txt', delimiter='\t', comments='#')
 
-    return (tracer_ix, ts, v, angle, xpos, tair, dland, n)
+    return (tracer_ix, ts, time, density, mat, v, angle, xpos, tair, tair2, dland, dland2, n)
 
+'''
+***********************************************************************
+'''
+def loadall(pathdata,modelname1,modelname2, threshold_timestep):
+    
+    '''
+    pathdata = '/work/nilscp/iSALE/isaleruns/data/ejecta/velocity/'
+    modelname1 = 'a4km_U2kms'
+    modelname2 = 'a4km_U2kms_C1000'
+    threshold_timestep = 4.0
+        
+    (tracer_ix_all, ts_all, time_all, density_all, mat_all, v_all, 
+     angle_all, xpos_all, tair_all, tair2_all, dland_all, dland2_all, n_all) = loadall(pathdata,
+     modelname1,modelname2)
+    
+
+    
+    '''
+    
+    (tracer_ix, ts, time, density, mat, v, angle, xpos, tair, tair2, dland, 
+     dland2, n) = loadej2(pathdata, modelname1)
+    
+    (tracer_ix_C1000, ts_C1000, time_C1000, density_C1000, mat_C1000, 
+     v_C1000, angle_C1000, xpos_C1000, tair_C1000, tair2_C1000, dland_C1000, 
+     dland2_C1000, n_C1000) = loadej2(pathdata, modelname2)
+    
+    idx = np.where(ts >= threshold_timestep)
+        
+    (tracer_ix, ts, time, density, mat, v, angle, xpos, tair, tair2, dland, dland2, 
+     n) = (tracer_ix[idx], ts[idx], time[idx], density[idx], mat[idx], v[idx], 
+      angle[idx], xpos[idx], tair[idx], tair2[idx], dland[idx], dland2[idx], 
+      n[idx])
+
+    tracer_ix_all = np.concatenate((tracer_ix_C1000,tracer_ix))
+    ts_all = np.concatenate((ts_C1000,ts)) # this serie is a bit confusing
+    time_all = np.concatenate((time_C1000,time))
+    density_all = np.concatenate((density_C1000,density))
+    mat_all = np.concatenate((mat_C1000,mat))
+    v_all = np.concatenate((v_C1000,v))
+    angle_all = np.concatenate((angle_C1000,angle))
+    xpos_all = np.concatenate((xpos_C1000,xpos))
+    tair_all = np.concatenate((tair_C1000,tair))
+    tair2_all = np.concatenate((tair2_C1000,tair2))
+    dland_all = np.concatenate((dland_C1000,dland))
+    dland2_all = np.concatenate((dland2_C1000,dland2))
+    n_all = np.concatenate((n_C1000,n))
+    
+    return (tracer_ix_all, ts_all, time_all, density_all, mat_all, v_all, 
+            angle_all, xpos_all, tair_all, tair2_all, dland_all, dland2_all, n_all)
+    
+    
 
 '''
 ***********************************************************************
 '''
 
+def tracerMaterial(model,tracer_ix):
+    
+    '''
+    So far it only works for two materials (projectile and target)
+    
+    mat = tracerMaterial(model,tracer_ix)
+    
+    '''
+    
+    #proj_start = model.tru[0].start
+    proj_end = model.tru[0].end
+    
+    target_start =  model.tru[1].start
+    #target_end = model.tru[1].end
+    
+    mat = tracer_ix
+    ix_proj = np.where((tracer_ix <= proj_end))
+    mat[ix_proj] = 1
+    
+    ix_targ = np.where((tracer_ix >= target_start))
+    mat[ix_targ] = 2
+    
+    return mat
+'''
+***********************************************************************
+'''
 
 def posTracer(model, method, threshold):
     '''
@@ -123,7 +239,18 @@ def posTracer(model, method, threshold):
     model = ......................
     method = 2
     threshold = (model.cppr[0]*model.dx) * 0.01
-    X, Y, ix, ts, dt, n = posTracer(model,method, threshold)
+    X, Y, tracer_idx, timestep, dt, densities, mat, n = posTracer(model,method,
+    threshold)
+    
+    path = '/work/nilscp/iSALE/isaleruns/testruns/ejecta/a4km_U20kms/'
+    method = 3
+    os.chdir(path)
+    
+    model = psp.opendatfile('jdata.dat')
+    threshold = (model.cppr[0]*model.dx) * 0.01
+
+    X, Y, tracer_idx, timestep, dt, densities, mat, n = posTracer(model,method,
+    threshold)
 
     '''
 
@@ -131,23 +258,23 @@ def posTracer(model, method, threshold):
     startTime = datetime.now()
 
     # create empty arrays
-    x0, x1, x2, y0, y1, y2, tracer_idx, timestep, n = (np.array([]),)*9
+    x0, x1, x2, y0, y1, y2, tracer_idx, timestep, densities, mat, n = (np.array([]),)*11
 
     # loop through saved timesteps
     for i in range(model.nsteps-2):
 
         # if equal to 0, we store DTSAVE (i.e., the time between saved timesteps)
         if i == 0:
-            step1 = model.readStep(['Den', 'TrP'], i+1)
+            step1 = model.readStep(['Den', 'Trd'], i+1)
             dt = step1.time
             n = np.append(n, 0.)
 
         # else we read the step before i, i, i+1 and i+2 (i being a saved timestep)
         else:
-            step0 = model.readStep(['Den', 'TrP'], i-1)
-            step1 = model.readStep(['Den', 'TrP'], i)
-            step2 = model.readStep(['Den', 'TrP'], i+1)
-            step3 = model.readStep(['Den', 'TrP'], i+2)
+            step0 = model.readStep(['Den', 'Trd'], i-1)
+            step1 = model.readStep(['Den', 'Trd'], i)
+            step2 = model.readStep(['Den', 'Trd'], i+1)
+            step3 = model.readStep(['Den', 'Trd'], i+2)
 
             ''' find in step1 and step2 values above pre-impact surface 
             (tracers from the projectile are also selected)'''
@@ -186,7 +313,10 @@ def posTracer(model, method, threshold):
 
             # the timestep when they were detected is also stored
             timestep = np.append(timestep, (i,) * len(mask))
-
+            
+            # the densities of detected ejected particles are stored
+            densities = np.append(densities, step1.data[1][mask])
+            
             # the numbers of tracers per timestep are also stored
             n = np.append(n, len(mask))
     '''
@@ -206,14 +336,18 @@ def posTracer(model, method, threshold):
         y = np.array((y0, y1))
         xx = np.swapaxes(x, 0, 1)
         yy = np.swapaxes(y, 0, 1)
-
+        
+    # the nature of the material    
+    mat = tracerMaterial(model,tracer_idx)
+    
     # ellapsed time since the script has been started
     print datetime.now() - startTime
+    
 
     # return an array with the positions (for a 3-dot or 2-dot methods)
     # the detected tracers, when they were detected, the time between saved
     # timesteps and the number of detected tracers per saved timestep
-    return xx, yy, tracer_idx, timestep, dt, n
+    return xx, yy, tracer_idx, timestep, dt, densities, mat, n
 
 
 '''
@@ -336,7 +470,8 @@ def wrap(model, method, thresholdf, g):
     wrap(model,method)
     '''
     threshold = (model.cppr[0]*model.dx) * thresholdf
-    x, y, tracer_idx, timesteps, dt, n = posTracer(model, method, threshold)
+    (x, y, tracer_idx, timesteps, 
+     dt, densities, mat, n) = posTracer(model, method, threshold)
     v, angle, xpos = parameters(x, y, tracer_idx, model, method, dt)
     tracer_idx = tracer_idx.astype(int)
     step = model.readStep(['Den', 'TrP'], 0)
@@ -344,9 +479,11 @@ def wrap(model, method, thresholdf, g):
     Ve, de, De = excavation(model, step, stepend, tracer_idx)
     X, Y, Xc, Yc = excavationProfile(model, step, tracer_idx)
     tair, xland = ballistic(v, angle, xpos, tracer_idx, g)
+    
+    timet = dt * timesteps
 
-    return (Ve, de, De, X, Y, Xc, Yc, timesteps, tracer_idx, n, v, angle, xpos,
-            tair, xland)
+    return (Ve, de, De, X, Y, Xc, Yc, timesteps, timet, tracer_idx, densities, 
+            mat, n, v, angle, xpos, tair, xland)
 
 
 '''
@@ -394,9 +531,9 @@ def main(path, folders, paths, method, thresholdf, g):
         print modelname
 
         model = psp.opendatfile('jdata.dat')
-        (Ve, de, Re, X, Y, Xc, Yc, timesteps, tracer_idx, n, v, angle, xpos,
-         tair, xland) = wrap(model, method, thresholdf, g)
-
+        (Ve, de, Re, X, Y, Xc, Yc, timesteps, timet, tracer_idx, densities, mat,
+         n, v, angle, xpos, tair, xland) = wrap(model, method, thresholdf, g)
+        
         # create plots directory
         path_data = paths + modelname + "/excavated/"
 
@@ -436,15 +573,16 @@ def main(path, folders, paths, method, thresholdf, g):
 
         os.chdir(path_ej)
 
-        header_txt = "tracer_idx;timesteps;v;angle;xpos;tair;xland"
+        header_txt = "tracer_idx;timesteps;time;density;mat;v;angle;xpos;tair;xland"
         # we need to define the name of the txt file that will be saved
         fname_ej = modelname + '_ejtracers.txt'
         # time, depth, diameter, volume
-        output = np.column_stack((tracer_idx, timesteps, v, angle, xpos,
-                                  tair, xland))
+        output = np.column_stack((tracer_idx, timesteps, timet, densities, mat, 
+                                  v, angle, xpos, tair, xland))
         np.savetxt(fname_ej, output, header=header_txt,
-                   delimiter=';', fmt=['%1.6e', '%1.6e', '%1.6e',
-                                       '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
+                   delimiter=';', fmt=['%1.6e', '%1.6e', '%1.6e','%1.6e', 
+                                       '%1.6e','%1.6e','%1.6e', '%1.6e', 
+                                       '%1.6e', '%1.6e'])
 
         header_txt = "ntracers"
         # we need to define the name of the txt file that will be saved
@@ -499,11 +637,104 @@ def ballistic(v, angle, xpos, tracer_idx, g):
     # I dunno, this things does not work so well
     return tes, land
 
+'''
+***********************************************************************
+'''
+
+
+def ballisticmelosh(v, angle, xpos, g, planet_radius):
+    '''
+    description:
+    preliminary script to calculate where the material ejected will land
+    Different from the ballistic function. This is the more complex equation
+    derived from Ahrens and O'Keefe**
+    '''
+
+    # landing position, we divide the calculation in three blocks, x1, x2 and x3
+    x1 = (v**2.) / (planet_radius * g)
+    x2 = np.sin(angle * (np.pi/180.)) * np.cos(angle * (np.pi/180.))
+    x3 = np.cos(angle * (np.pi/180.)) * np.cos(angle * (np.pi/180.))
+    
+    # calculation of phi
+    aphi = (x1*x2)/(1.0-x1*x3)
+    phi = 2.0 * np.arctan(aphi)
+    
+    
+    # calculation of the landing position
+    land = xpos + (planet_radius * phi)
+    
+    # calculate the ellipticity
+    x5 = np.sin(angle * (np.pi/180.)) * np.sin(angle * (np.pi/180.))
+    sqe = (((x1 - 1.0)**2.0) * x3) + x5
+    e = np.sqrt(sqe)
+    
+    # calculate the semi-major axis of the trajectory
+    a = (planet_radius * (1. - e * np.cos(phi/2.))) / ((1.-e) * (1.+e))
+    
+    # calculate the flight of an ejecta fragment
+    # the calculation is divided in several blocks xx
+    
+    # solution 1
+    teta = np.pi - (phi/2.)
+    xx1 = (a**(3./2.)) / (np.sqrt(g*(planet_radius**2.)))
+    xx2 = 2. * np.arctan(np.sqrt((1.-e)/(1.+e)) * np.tan(teta/2.))
+    xx3 = (e * np.sqrt(1.-e**2.) * np.sin(teta)) / (1. + e * np.cos(teta))
+    
+    tair = xx1 * (np.pi - (xx2 - xx3))
+    
+    # solution 2
+    # if -1 < e < 0
+    
+    #idxe = np.where(x1 <= 1.0)
+    #xx4 = (2.*a**(3./2.)) / (np.sqrt(g*(planet_radius**2.)))
+    #xx5 = 2. * np.arctan(np.sqrt((1.-e)/(1.+e)) * np.tan(phi/4.))
+    #xx6 = (e * np.sqrt(1.-e**2.) * np.sin(phi/2.)) / (1. + e * np.cos(phi/2.))
+    
+    #tair3 = xx4 * (xx5 - xx6)
+    
+    return tair, land
 
 '''
 ***********************************************************************
 '''
 
+def ballisticcalculations(path, modelname, g, planet_radius):
+    
+    '''
+    calculate tair2 and dland2 in a different way (following Ahrens and O'Keefe)
+    
+    path = '/work/nilscp/iSALE/isaleruns/data/ejecta/velocity/'
+    modelname = 'a4km_U20kms_C1000'
+    g = 1.62
+    planet_radius = 1737. * 1000.
+    
+    ballisticcalculations(path, modelname, g, planet_radius)
+    '''
+    os.chdir(path)
+        
+    path_ej = path + modelname + '/'
+    os.chdir(path_ej)
+    
+    (tracer_ix, ts, v, angle, xpos, tair, dland, n) = loadej(path, modelname)
+    
+    tair2, dland2 = ballisticmelosh(v, angle, xpos, g, planet_radius)
+    
+    
+
+    header_txt = "tracer_idx;timesteps;v;angle;xpos;tair;xland"
+    # we need to define the name of the txt file that will be saved
+    fname_ej = modelname + '_ejtracers2.txt'
+    # time, depth, diameter, volume
+    output = np.column_stack((tair2, dland2))
+    np.savetxt(fname_ej, output, header=header_txt,
+               delimiter=';', fmt=['%1.6e', '%1.6e'])
+    
+    print "DONE"
+    
+    
+'''
+***********************************************************************
+'''
 
 def excavation(model, step, stepend, tracer_idx):
     '''

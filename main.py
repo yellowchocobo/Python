@@ -55,7 +55,7 @@ path = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/ejecta/results/velocity
 os.chdir(path)
 
 # selection of folders
-search = '*kms_C1000'
+search = 'a4km_U2km_*'
 folders = glob.glob(search)
 
 #folders =  ['C00P20F08_L250', 'C00P20F08_L500','C00P20F08_L1000']
