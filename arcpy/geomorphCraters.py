@@ -1132,14 +1132,18 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
     #zall = np.zeros((num,len(idx_circle2)))
     #distall= np.zeros((num,len(idx_circle2)))
     
-
+	# maybe use delete_redundant function here? on idx_circle2?
+	# I think it's okay see above at L1100-1108
     
     #get values
     idt = 0
     depth = 0
+	
+	#dictionary to save the cross sections to
+	crossSections = {}
     
     # need to think here
-    for ii in idx_circle2:
+    for crossi, ii in enumerate(idx_circle2):
                 
         ncol = ii[0]
         nrow = ii[1]
@@ -1169,6 +1173,11 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
         # calculate the distance along the profile 2
         dist_cells = np.sqrt(((cols - ncenterx)**2.) + ((rows - ncentery)**2.))
         dist = dist_cells * cellsize #I guess it is what they call s in Geiger
+		
+		# I should here save each profile that could later on be used (either saved in a dictionary or 
+		# directly save to a text file. I would prefer first to be saved in a dictionary and then
+		# save to a text file) HERE MODIFY
+		crossSections{crossi} = zi[:]
         
         #distall[:,idt] = dist #this is going to be big for every profile
         
