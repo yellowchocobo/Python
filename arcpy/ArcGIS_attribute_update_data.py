@@ -4,8 +4,12 @@ import glob, os
 from arcpy.sa import *
 import numpy as np
 
+'''
+**************************************************************************************************
+'''
+
 #path
-path = "X:/Moon/downloading/STEPMED/LAYERS"
+path = "X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/"
 
 # Set overwrite option
 arcpy.env.overwriteOutput = True
@@ -14,10 +18,14 @@ arcpy.CheckOutExtension("3D")
 arcpy.CheckOutExtension("Spatial")
 
 # define paths and workspace (I need to create the gdb at some points)
-env.workspace = env.scratchWorkspace = path + "/layers2.gdb"
+env.workspace = env.scratchWorkspace = path + "/layers2019.gdb"
+
+'''
+**************************************************************************************************
+'''
 
 #load results
-pathdata = 'X:/Moon/downloading/STEPMED/ndata2_05112018/'
+pathdata = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/data_28022019/'
 
 alldata = np.loadtxt(pathdata + 'final_res.txt', delimiter = ";", comments="#")
 
@@ -38,7 +46,7 @@ alldata[ixnan] = -9999
 																	   alldata[:,20],alldata[:,21], alldata[:,22], alldata[:,23],
 																	   alldata[:,24],alldata[:,25], alldata[:,26], alldata[:,27],
 																	   alldata[:,28],alldata[:,29], alldata[:,30], alldata[:,31])
-infile = ['CENTER', 'fresh_craters_updt_stepmed']
+infile = ['CENTER', 'rayed_craters_UPD_NILS']
 
 fld_to_be_created = [arcpy.ValidateFieldName("MED_DIAM"), arcpy.ValidateFieldName("UNC_DIAM"), arcpy.ValidateFieldName("DIAM_25"), 
 					 arcpy.ValidateFieldName("DIAM_75"), arcpy.ValidateFieldName("DIAM_MIN"), arcpy.ValidateFieldName("DIAM_MAX"),
@@ -68,8 +76,88 @@ for shapef in infile:
 				row[i] = alldata[ix,i]	
 			cursor.updateRow(row)
 			ix = ix + 1
+
+'''
+**************************************************************************************************
+'''
 			
 fld_to_be_created2 = [arcpy.ValidateFieldName("MARE")]
 for shapef in infile:
 	for field in fld_to_be_created2:
 		arcpy.AddField_management(shapef, field, "LONG", "", "")
+        
+        
+fld_to_be_created2 = [arcpy.ValidateFieldName("QUALITY")]
+for shapef in infile:
+	for field in fld_to_be_created2:
+		arcpy.AddField_management(shapef, field, "LONG", "", "")
+        
+'''
+**************************************************************************************************
+'''
+
+#load results
+pathdata = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/data_28022019/'
+
+alldata = np.genfromtxt(pathdata + 'modification_index.csv', delimiter = ",", comments="#")
+
+# change nan to -9999
+ixnan = np.isnan(alldata)
+alldata[ixnan] = -9999
+
+infile = ['rayed_craters_UPD_NILS']
+
+
+fld_to_be_created = [arcpy.ValidateFieldName("TYPE_CRAT"), arcpy.ValidateFieldName("IMPACT_MLT"), arcpy.ValidateFieldName("WITH_LGCRA"), 
+					 arcpy.ValidateFieldName("RA_CFLOOR"), arcpy.ValidateFieldName("RA_EJEC"), arcpy.ValidateFieldName("RAYS"),
+					 arcpy.ValidateFieldName("CEJ_TEXTUR"),
+					 arcpy.ValidateFieldName("NO_CRAT"),arcpy.ValidateFieldName("LIGHT_CRA"),arcpy.ValidateFieldName("MED_CRA"),
+					 arcpy.ValidateFieldName("HEAV_CRA"),arcpy.ValidateFieldName("TOTAL")]
+					 
+
+# add fields
+for shapef in infile:
+	for field in fld_to_be_created:
+		arcpy.AddField_management(shapef, field, "FLOAT", "", "")
+
+# update all the data
+for shapef in infile:
+    with arcpy.da.UpdateCursor(shapef, fld_to_be_created) as cursor:
+        ix = 0
+        for row in cursor:
+            for i in range(12):
+                row[i] = np.int(alldata[ix,i])
+            cursor.updateRow(row)
+            ix = ix + 1
+            print (ix)
+            
+            
+'''
+**************************************************************************************************
+'''
+
+alldata = np.genfromtxt(pathdata + 'clementine.csv', delimiter = ",", comments="#")
+
+# change nan to -9999
+ixnan = np.isnan(alldata)
+alldata[ixnan] = -9999
+
+infile = ['rayed_craters_UPD_NILS']
+
+
+fld_to_be_created = [arcpy.ValidateFieldName("CLEM")]
+
+# add fields
+for shapef in infile:
+	for field in fld_to_be_created:
+		arcpy.AddField_management(shapef, field, "FLOAT", "", "")
+
+# update all the data
+for shapef in infile:
+    with arcpy.da.UpdateCursor(shapef, fld_to_be_created) as cursor:
+        ix = 0
+        for row in cursor:
+            row[0] = np.int(alldata[ix])
+            cursor.updateRow(row)
+            ix = ix + 1
+            print (ix)

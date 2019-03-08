@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import copy
 
 sys.path.append('M:/Nils/Python/arcpy/') 
-import geomorphCraters.py as wk
+import geomorphCraters as wk
 
 path = 'X:/Moon/downloading/STEPMED/ASCIIreproj/'
 pathplot = 'X:/Moon/downloading/STEPMED/plots_detection_ndata2_05112018/'
@@ -29,7 +29,7 @@ def ifnot_mkdir(path):
         pass
     else:
         os.mkdir(path)
-        print "A new directory has been created"
+        print ("A new directory has been created")
 '''
 **************************************************************************
 '''
@@ -73,7 +73,7 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
     
     for indf, filename in enumerate(filenames):
         
-        print indf
+        print (indf)
         
         # should be good this way
         data = np.loadtxt(path + filename, skiprows=6)
@@ -140,8 +140,8 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
         #__, ncentery = wk.find_nearest(yllcorner+ye,ycrater[indf]) #correspond to rows and y
         
         # middle of the dtm
-        ncentery = nrows/2
-        ncenterx = nrows/2
+        ncentery = int(nrows/2) #Python 3 770/2 is not directly integer anymore
+        ncenterx = int(nrows/2)
         
         # Average height at 1R, 2R, 3R, 3.5R and 4R from the centre of the crater
         # (need to be replace with the right centery and x)
@@ -398,7 +398,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
     
     for indf, filename in enumerate(filenames):
     
-        print indf
+        print (indf)
         
         # load data
         data = np.loadtxt(path + filename, skiprows=6)
@@ -633,8 +633,29 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         np.savetxt(pathdata + name_crater_f, arc, delimiter = ";", header=header_txt,fmt='%10.5f', comments='#')
 		
         # added part about saving cross sections. I still need to test if this good or not
-        name_crater_cross = filename.split('.asc')[0] + '_cross_sections.txt'      
-        np.savetxt(pathdata + name_crater_cross, crossSections, delimiter = ";", header=header_txt,fmt='%10.5f', comments='#')
+        name_crater_cross = filename.split('.asc')[0] + '_cross_sections.txt'
+        
+        # in order to save it I have to transform the dictionnary into an array
+        # I need to get the maximum length
+        maxlength_crossSections = 0
+        for xx_tmp, x_tmp in crossSections.items():
+            if len(x_tmp) > maxlength_crossSections:
+                maxlength_crossSections = len(x_tmp)
+            else:
+                None
+                
+        number_crossSections = len(crossSections)
+        
+        # create array
+        array_crossSections = np.empty((maxlength_crossSections, number_crossSections))
+        array_crossSections[:] = np.nan
+                
+        # fill array with values
+        for xx_tmp, x_tmp in crossSections.items():
+            maxlength_crossSections = len(x_tmp)
+            array_crossSections[:maxlength_crossSections,xx_tmp] = x_tmp
+        
+        np.savetxt(pathdata + name_crater_cross, array_crossSections, delimiter = ";",fmt='%10.5f', comments='#')
 		
     return (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             depthf, 
@@ -724,22 +745,24 @@ def mergedata(path,pathdata,filenamecrater):
 **************************************************************************
 '''
 
+# define the folder containing the DTMs, and the folders where the plot
+# and data routines will save data
+path = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/ASCII_28022019/'
+pathplot = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/plots_28022019/'
+pathdata = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/data_28022019/'
 
-#path = 'X:/Moon/downloading/STEPMED/ASCII/'
-#pathplot = 'X:/Moon/downloading/STEPMED/plots_detection_ndata2/'
-#pathdata = 'X:/Moon/downloading/STEPMED/ndata2/'
-#pathdata2 = 'X:/Moon/downloading/STEPMED/finalrun2/'
-
+# Location + cratername
 filenameXY = 'data.txt'
 filenamecrater = 'crater_id.txt'
 
 #make directory if not existing
 ifnot_mkdir(pathplot)
 ifnot_mkdir(pathdata)
-#ifnot_mkdir(pathdata2)  
 
+# run step 1
 run1(path, filenameXY, filenamecrater, pathplot, pathdata)
 
+# run step 2
 (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             depthf, 
             med_h, unc_h, h_25, h_75, h_min, h_max,
