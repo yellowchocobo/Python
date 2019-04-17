@@ -663,7 +663,7 @@ def craterdimensions(model, mode, id_mat):
 '''
 
 
-def main(path, folders, paths, mode, id_mat, transient):
+def main(path, folders, paths, mode, id_mat, transient, idx_manual = 0):
     '''
     description:
     calculate all final crater dimensions for 1-layer targets
@@ -696,7 +696,7 @@ def main(path, folders, paths, mode, id_mat, transient):
         os.chdir(patht)
 
         # print modelname
-        print modelname
+        print (modelname)
 
         # open model with pySALEplot
         model = psp.opendatfile('jdata.dat')
@@ -809,6 +809,43 @@ def main(path, folders, paths, mode, id_mat, transient):
                     (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan))
                 np.savetxt(fname, output2, header=header_txt,
                            delimiter='\t', fmt=['%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
+                
+                
+        ####################################################################
+        # CALCULATE CRATER DIMENSIONS AT THE FINAL CRATER (MANUAL)
+        ####################################################################
+
+        # it should take the value at t/tr = 10 and not as the mean of the last 5 values, it could make some of the other codes easier
+        # the problem that I should not take any values maybe I should say that it should be at least
+
+        # create plots directory if not existing
+        path_data = paths + modelname + "/manual/"
+
+        if not os.path.exists(path_data):
+            os.makedirs(path_data)
+
+        os.chdir(path_data)
+
+        # only run the script if idx_manual is specified
+        if idx_manual > 0:
+            stp1 = idx_manual
+    
+            fname = modelname + '_final.txt'
+            header_txt = "f_time\tf_depth\tf_diameter\tf_vol\tf_alt\tf_drim\tf_Vrim"
+            
+            if mode == 0:
+                output2 = np.column_stack((np.nanmean(time[stp1]), np.nanmean(depth[stp1]), np.nanmean(
+                                           diam[stp1]), np.nanmean(vol[stp1]), np.nanmean(alt[stp1]), np.nanmean(drim[stp1]), np.nanmean(Vrim[stp1])))
+                np.savetxt(fname, output2, header=header_txt,
+                                           delimiter='\t', fmt=['%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
+            else:
+                output2 = np.column_stack((np.nanmean(time[stp1]), np.nanmean(mdepth[stp1]), np.nanmean(
+                                           diam[stp1]), np.nanmean(vol[stp1]), np.nanmean(alt[stp1]), np.nanmean(drim[stp1]), np.nanmean(Vrim[stp1])))
+                np.savetxt(fname, output2, header=header_txt,
+                                           delimiter='\t', fmt=['%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
+                
+        else:
+            None
 
         # close model file
         model.closeFile()
@@ -978,7 +1015,7 @@ def craterProfiles(folders, path, paths, idx, mode):
         os.chdir(patht)
 
         # print modelname
-        print modelname
+        print (modelname)
 
         # id_mat
         id_mat = 0
@@ -1095,7 +1132,7 @@ def craterProfiles(folders, path, paths, idx, mode):
         # close model file
         model.closeFile()
 
-    print "transient profiles are saved"
+    print ("transient profiles are saved")
 
 
 '''

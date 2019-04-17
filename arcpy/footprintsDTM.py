@@ -1,9 +1,9 @@
-import arcpy
-from arcpy import env
 import glob, os
-from arcpy.sa import *
 import numpy as np
 import shutil
+import arcpy
+from arcpy import env
+from arcpy.sa import *
 
 '''
 We are writing a routine to create the footprints of NAC DTMs
@@ -133,8 +133,8 @@ def footprints_DTM(path, pathdab, absolute_DTM_paths):
     spatialReference_new = "PROJCS['Equirectangular_Moon',GEOGCS['GCS_Moon',DATUM['D_Moon',SPHEROID['Moon_localRadius',1737400.0,0.0]],PRIMEM['Reference_Meridian',0.0],UNIT['Degree',0.0174532925199433]],PROJECTION['Plate_Carree'],PARAMETER['false_easting',0.0],PARAMETER['false_northing',0.0],PARAMETER['central_meridian',0.0],UNIT['Meter',1.0]]"
         
     # loop throgh DTMs
-    for pathDTM in absolute_DTM_paths:
-                
+    for ix, pathDTM in enumerate(absolute_DTM_paths):
+        
         # name of the DTM
         DTM = pathDTM.split("/")[-1]
         print (DTM)
@@ -145,34 +145,40 @@ def footprints_DTM(path, pathdab, absolute_DTM_paths):
         # change directory to absolute path
         os.chdir(path_dtm_folder)
         
-        # get the extent of miniarea_square (but this is in the new coordinates! So there is a problem in the next steps
-        desc_DTM = arcpy.Describe(pathDTM)
+        # get the footprint
+        arcpy.RasterDomain_3d(in_raster=path + DTM, out_feature_class="tmp_polygon_footprints", out_geometry_type="POLYGON")
         
-        # old spatial reference
-        spatialReference_DTM = desc_DTM.spatialReference
-        
-        # projection
-        arcpy.ProjectRaster_management(in_raster=pathDTM, out_raster= path + DTM + "_project.TIF", out_coor_system=spatialReference_new, resampling_type="NEAREST", geographic_transform="", Registration_Point="", in_coor_system=spatialReference_DTM)
+        # projection of the polygon
+        arcpy.Project_management("tmp_polygon_footprints", "tmp_polygon_footprints_proj", spatialReference_new)
                 
-        # conversion to polygon
-        arcpy.RasterDomain_3d(in_raster=path + DTM + "_project.TIF", out_feature_class=DTM.split(".")[0] + "_polygon_footprints", out_geometry_type="POLYGON")
-
-        # delete old raster
-        arcpy.Delete_management(path + DTM + "_project.TIF")
+        if arcpy.Exists("polygon_footprints_all"):
+            
+            # copy tmp all
+            arcpy.CopyFeatures_management("polygon_footprints_all", "polygon_footprints_all_tmp")
+            
+            # add to main polygon and overwrite the main polygon
+            arcpy.Merge_management(["tmp_polygon_footprints_proj", "polygon_footprints_all_tmp"] , "polygon_footprints_all")
+            
+        else:
+            arcpy.CopyFeatures_management("tmp_polygon_footprints_proj", "polygon_footprints_all")
         
+        # delete old raster and tmp polygon footprints (only one layer will be kept at a time)
+        arcpy.Delete_management("tmp_polygon_footprints")
+        arcpy.Delete_management("tmp_polygon_footprints_proj")
+        arcpy.Delete_management("polygon_footprints_all_tmp")    
         
 '''
 **************************************************************************************************
-'''
+
 
 def merge_footprints(pathdab, flag_delete):
     
-    '''
-    pathdab = "C:/Users/nilscp/Desktop/testarcpy/DTM/database.gdb/"
-    flag_delete = False
+
+    #pathdab = "C:/Users/nilscp/Desktop/testarcpy/DTM/database.gdb/"
+    #flag_delete = False
     
-    merge_footprints(pathdab, flag_delete)
-    '''
+    #merge_footprints(pathdab, flag_delete)
+
         
     # define paths and workspace (I need to create the gdb at some points)
     env.workspace = env.scratchWorkspace = pathdab
@@ -204,7 +210,7 @@ def merge_footprints(pathdab, flag_delete):
     return list_polygon_footprints
 
 
-'''
+
 **************************************************************************************************
 '''
 
@@ -217,13 +223,13 @@ def add_footprints_attribute(pathdab, infile, list_polygon_footprints, absolute_
     fieldname2 = arcpy.ValidateFieldName("abspath")
     
     # 
-    arcpy.AddField_management(infile, fieldname1, "TEXT","","",30)
-    arcpy.AddField_management(infile, fieldname2, "TEXT","","",60)
+    arcpy.AddField_management(infile, fieldname1, "TEXT","","",60)
+    arcpy.AddField_management(infile, fieldname2, "TEXT","","",90)
       
     with arcpy.da.UpdateCursor(infile, [fieldname1, fieldname2]) as cursor:    	
         ix = 0
         for row in cursor:	
-            row[0] = list_polygon_footprints[ix].split("_polygon_footprints")[0]
+            row[0] = list_polygon_footprints[ix]
             row[1] = absolute_DTM_paths[ix]
             cursor.updateRow(row)
             ix = ix + 1
@@ -315,16 +321,28 @@ def intersect_ROI_DTM(pathdab, infile_ROI, infile_DTM, outASCII):
 **************************************************************************************************
 '''
 
-path  = "C:/Users/nilscp/Desktop/testarcpy/DTM/"
-pathdab = "C:/Users/nilscp/Desktop/testarcpy/DTM/database.gdb/"
+path  = "D:/NAC_DTM/NAC_DTM_RDR/"
+pathdab = "D:/NAC_DTM/NAC_DTM_RDR/arcpy/database.gdb/"
 pathastra = ""
-absolute_DTM_paths = ['Y:/nilscp/Moon/NAC_DTM/NAC_DTM_M102522406_M102529564_DEM.TIF', 
-                     'Y:/nilscp/Moon/NAC_DTM/NAC_DTM_M104877210_M104884367_DEM.TIF']
+
+os.chdir(path)
+filenames = glob.glob("*.TIF")
+
+#NAC_DTM_M1097015769_M1097022916_DEM_polygon_footprints
+
+#filenames2 = filenames[844:]
+
+absolute_DTM_paths = []
+for f in filenames:
+    absolute_DTM_paths.append(path + f)
+    
 flag_delete = False
 
 # this need to be tested
 #absolute_DTM_paths = list_DTM(pathastra) # get list of the absolute paths to the DTMs
-footprints_DTM(path, pathdab, absolute_DTM_paths)
-list_polygon_footprints = merge_footprints(pathdab, flag_delete) # test it once with flag_delete = False
-add_footprints_attribute(pathdab, "polygon_footprints_all", list_polygon_footprints, absolute_DTM_paths)
+#footprints_DTM(path, pathdab, absolute_DTM_paths)
+#list_polygon_footprints = merge_footprints(pathdab, flag_delete) # test it once with flag_delete = False
+add_footprints_attribute(pathdab, "polygon_footprints_all", filenames, absolute_DTM_paths)
 
+# for some reasons footprints_DTM stop to work after 70 or so iteration
+# I guess it has to do about how much memory

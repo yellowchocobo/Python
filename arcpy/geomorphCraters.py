@@ -1141,6 +1141,8 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
 	
 	#dictionary to save the cross sections to
     crossSections = dict()
+    XSections = dict()
+    YSections = dict()
     
     # need to think here
     for crossi, ii in enumerate(idx_circle2):
@@ -1178,6 +1180,11 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
 		# directly save to a text file. I would prefer first to be saved in a dictionary and then
 		# save to a text file) HERE MODIFY
         crossSections[crossi] = zi[:]
+        XSections[crossi] = cols
+        YSections[crossi] = rows
+        
+        #I would also like to save the location x, y of the data
+        
         
         #distall[:,idt] = dist #this is going to be big for every profile
         
@@ -1343,7 +1350,7 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
         # decay cavity and rim
         
     return (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs,
-            h, depth, diamd, len(idx_circle2), prof_uni_detected, crossSections)
+            h, depth, diamd, len(idx_circle2), prof_uni_detected, crossSections, YSections, XSections)
     
 '''
 ******************************************************************************

@@ -518,7 +518,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             
             #need to put some indices there (maybe, they will have different sizes)
             (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs,
-            h, depth, diam, nnn, prf, crossSections) = (wk.calculation(xc, yc, x_not_outliers, 
+            h, depth, diam, nnn, prf, crossSections, YSections, XSections) = (wk.calculation(xc, yc, x_not_outliers, 
                               y_not_outliers, z_not_outliers, prof_not_outliers,
                 rnew, ndata2, cellsize, ncenterx, ncentery, xllcorner, yllcorner))
             
@@ -649,13 +649,22 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         # create array
         array_crossSections = np.empty((maxlength_crossSections, number_crossSections))
         array_crossSections[:] = np.nan
-                
+        
+        arrayY_crossSections = np.empty((maxlength_crossSections, number_crossSections))
+        arrayY_crossSections[:] = np.nan  
+        
+        arrayX_crossSections = np.empty((maxlength_crossSections, number_crossSections))
+        arrayX_crossSections[:] = np.nan           
+        
         # fill array with values
         for xx_tmp, x_tmp in crossSections.items():
             maxlength_crossSections = len(x_tmp)
             array_crossSections[:maxlength_crossSections,xx_tmp] = x_tmp
+            arrayY_crossSections[:maxlength_crossSections,xx_tmp] = YSections[xx_tmp]
+            arrayX_crossSections[:maxlength_crossSections,xx_tmp] = XSections[xx_tmp]
         
-        np.savetxt(pathdata + name_crater_cross, array_crossSections, delimiter = ";",fmt='%10.5f', comments='#')
+        datacross = np.column_stack((arrayY_crossSections, arrayX_crossSections, array_crossSections))
+        np.savetxt(pathdata + name_crater_cross, datacross, delimiter = ";",fmt='%10.5f', comments='#')
 		
     return (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             depthf, 
