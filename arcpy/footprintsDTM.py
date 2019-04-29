@@ -151,21 +151,21 @@ def footprints_DTM(path, pathdab, absolute_DTM_paths):
         # projection of the polygon
         arcpy.Project_management("tmp_polygon_footprints", "tmp_polygon_footprints_proj", spatialReference_new)
                 
-        if arcpy.Exists("polygon_footprints_all"):
+        if arcpy.Exists("polygon_footprints_new"):
             
             # copy tmp all
-            arcpy.CopyFeatures_management("polygon_footprints_all", "polygon_footprints_all_tmp")
+            arcpy.CopyFeatures_management("polygon_footprints_new", "polygon_footprints_new_tmp")
             
             # add to main polygon and overwrite the main polygon
-            arcpy.Merge_management(["tmp_polygon_footprints_proj", "polygon_footprints_all_tmp"] , "polygon_footprints_all")
+            arcpy.Merge_management(["polygon_footprints_new_tmp", "tmp_polygon_footprints_proj"] , "polygon_footprints_new")
             
         else:
-            arcpy.CopyFeatures_management("tmp_polygon_footprints_proj", "polygon_footprints_all")
+            arcpy.CopyFeatures_management("tmp_polygon_footprints_proj", "polygon_footprints_new")
         
         # delete old raster and tmp polygon footprints (only one layer will be kept at a time)
         arcpy.Delete_management("tmp_polygon_footprints")
         arcpy.Delete_management("tmp_polygon_footprints_proj")
-        arcpy.Delete_management("polygon_footprints_all_tmp")    
+        arcpy.Delete_management("polygon_footprints_new_tmp")    
         
 '''
 **************************************************************************************************
@@ -228,7 +228,8 @@ def add_footprints_attribute(pathdab, infile, list_polygon_footprints, absolute_
       
     with arcpy.da.UpdateCursor(infile, [fieldname1, fieldname2]) as cursor:    	
         ix = 0
-        for row in cursor:	
+        for row in cursor:
+            print (list_polygon_footprints[ix])
             row[0] = list_polygon_footprints[ix]
             row[1] = absolute_DTM_paths[ix]
             cursor.updateRow(row)
@@ -241,81 +242,95 @@ def add_footprints_attribute(pathdab, infile, list_polygon_footprints, absolute_
 **************************************************************************************************
 '''
 
-def intersect_ROI_DTM(pathdab, infile_ROI, infile_DTM, outASCII):
+
+def intersect_ROI_DTM(pathdab, location_completely_within, outASCII, crater_id):
     
     '''
-    give absolute path
-    need to be careful with the differences in projection coordinates infile_ROI 
-    and infile_DTM should be in plate carree
+    simple version of the script above. Only DTMs covering completely 4 times
+    the radius of the crater has been selected. (points, buffer, envelope and the
+    absolute path to the  DTMs are provided)
     
-    Need to double check that
     
-    infile_ROI should be maybe only 4 times the diameter! Need to fix that
-    and  be careful with the projection and so on...
+    location_completely_within = "location_overlapDTM_completely_within"
+    pathdab = "D:/NAC_DTM/NAC_AMES/arcpy/database.gdb/"
+    outASCII = "D:/ANALYSIS/NAC_DTM/ASCII/"
+    crater_id = np.genfromtxt("D:/ANALYSIS/NAC_DTM/ASCII/crater_id.txt", dtype=str)
     
+    intersect_ROI_DTM(pathdab, location_completely_within, outASCII, crater_id)
     '''
     # define paths and workspace (I need to create the gdb at some points)
     env.workspace = env.scratchWorkspace = pathdab
+       
+    # Make a layer from the feature class of the location of the centre of the crater
+    arcpy.MakeFeatureLayer_management(location_completely_within, location_completely_within + "_lyr")
     
-    #
-    arcpy.Intersect_analysis(in_features=[infile_ROI, infile_DTM], out_feature_class="intersect", join_attributes="NO_FID", cluster_tolerance="-1 Unknown", output_type="INPUT")
+    # run buffer tool
+    out = 'buffer'
+    bufferField = "Diameter4txt"
+    sideType = "FULL"
+    endType = "ROUND"
+    dissolveType = "NONE"
+    dissolveField = "Distance"
     
-               
-    # Make a layer from the feature class
-    arcpy.MakeFeatureLayer_management("intersect", "intersect_lyr")
-    
-    with arcpy.da.UpdateCursor("intersect_lyr", ["CRATER_ID", "DTM_name", "abspath"]) as cursor:
+    with arcpy.da.UpdateCursor(location_completely_within + "_lyr", ["x_coord", "y_coord", "abspath"]) as cursor:
         
         ix = 0
         
         for row in cursor:
-            
-            if ix > 0:
-                arcpy.SelectLayerByAttribute_management("intersect_lyr", "CLEAR_SELECTION")
-            
-            else:
-                None
+            print (ix)
+            if os.path.isfile(outASCII + crater_id[ix] + '.asc'):
+                ix = ix + 1
+            else:               
+                #query selection CENTER
+                query = "CRATER_ID = '" + crater_id[ix] + "'"
+                arcpy.SelectLayerByAttribute_management(location_completely_within + "_lyr", "NEW_SELECTION", query)
                 
-            # query
-            query = "CRATER_ID = '" + row[0] + "'"
-            print (query)
-            arcpy.SelectLayerByAttribute_management("intersect_lyr", "NEW_SELECTION", query)
-                 
-            # make a layer of the selection
-            arcpy.CopyFeatures_management("intersect_lyr", "intersect_tmp")
-            
-            # old coordinate systems
-            desc = arcpy.Describe("intersect_tmp")
-            spatialReference = desc.spatialReference
-
+                # make a layer of the selection
+                arcpy.CopyFeatures_management(location_completely_within + "_lyr", "CENTER_TMP")
                 
-            # project to the right coordinate systems (same as DTM?)
-            desc_new = arcpy.Describe(row[2]) #abspath
-            spatialReference_new = desc_new.spatialReference
-
+                # old coordinate systems
+                desc = arcpy.Describe("CENTER_TMP")
+                spatialReference = desc.spatialReference
+                        
+                # projection of the right coordinate systems (same as DTM?)
+                desc_new = arcpy.Describe(row[2]) 
+                spatialReference_new = desc_new.spatialReference
                 
-            # projection of footprints to correct coordinate system
-            arcpy.Project_management(in_dataset="intersect_tmp", out_dataset="intersect_tmp_proj", out_coor_system= spatialReference_new, transform_method="", in_coor_system=spatialReference, preserve_shape="NO_PRESERVE_SHAPE", max_deviation="", vertical="NO_VERTICAL")	
-            
-            desc_proj = arcpy.Describe("intersect_tmp_proj")
-            extent = desc_proj.extent
-            top = extent.YMax
-            bottom = extent.YMin
-            left = extent.XMin
-            right = extent.XMax
-            
-            ExtStr = "{} {} {} {}".format(left, bottom, right, top)
-            
-            # The following inputs are layers or table views: "dtm", "square_test"
-            arcpy.Clip_management(in_raster=row[2], rectangle= ExtStr, out_raster= pathdab + "dtm_clip", in_template_dataset="intersect_tmp_proj", nodata_value="-3.402823e+038", clipping_geometry="NONE", maintain_clipping_extent="NO_MAINTAIN_EXTENT")
-			
-			# Get input Raster properties
-            inRas = arcpy.Raster('dtm_clip')
-						
-			# or I could convert it to ascii
-            arcpy.RasterToASCII_conversion(inRas, outASCII + row[0] + '.asc')
-            
-    
+                # projection of location
+                arcpy.Project_management(in_dataset="CENTER_TMP", out_dataset="CENTER_PROJ", out_coor_system= spatialReference_new, transform_method="", in_coor_system=spatialReference, preserve_shape="NO_PRESERVE_SHAPE", max_deviation="", vertical="NO_VERTICAL")
+                
+                # buffer creation 
+                arcpy.Buffer_analysis("CENTER_PROJ", out, bufferField, sideType, endType, dissolveType)
+                
+                # run feature to envelope tool
+                arcpy.FeatureEnvelopeToPolygon_management(out,
+													      "envelope_proj",
+													       "SINGLEPART")
+                
+                desc_proj = arcpy.Describe("envelope_proj")
+                extent = desc_proj.extent
+                top = extent.YMax
+                bottom = extent.YMin
+                left = extent.XMin
+                right = extent.XMax
+                
+                ExtStr = "{} {} {} {}".format(left, bottom, right, top)
+                
+                # The following inputs are layers or table views: "dtm", "square_test"
+                arcpy.Clip_management(in_raster=row[2], rectangle= ExtStr, out_raster= pathdab + "dtm_clip", in_template_dataset="envelope_proj", clipping_geometry="NONE", maintain_clipping_extent="NO_MAINTAIN_EXTENT")
+    			
+    			# Get input Raster properties
+                inRas = arcpy.Raster('dtm_clip')
+    						
+    			# or I could convert it to ascii
+                arcpy.RasterToASCII_conversion(inRas, outASCII + crater_id[ix] + '.asc')
+                
+                ix = ix + 1
+                arcpy.Delete_management("dtm_clip")
+                arcpy.Delete_management("envelope_proj")
+                arcpy.Delete_management(out)
+                arcpy.Delete_management("CENTER_PROJ")
+                arcpy.Delete_management("CENTER_TMP")
        
 '''
 **************************************************************************************************

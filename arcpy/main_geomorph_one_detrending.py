@@ -510,11 +510,11 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             # with old data otherwise sometimes the dem area is not large enough
             
             # the second detrending through the selected maximum elevation points are done
-            stduse = False
-            Z2 = wk.linear3Ddetrending(x_not_outliers,y_not_outliers,z_not_outliers, xc, yc, stduse)
+            #stduse = False
+            #Z2 = wk.linear3Ddetrending(x_not_outliers,y_not_outliers,z_not_outliers, xc, yc, stduse)
                 
             # the detrended plane is substracted to the DEM (with the newly detected)
-            ndata2 = ndata - Z2
+            #ndata2 = ndata - Z2
             
             
             # I should actually rerun the rim detection things one  more time
@@ -525,7 +525,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs,
             h, depth, diam, nnn, prf, crossSections, YSections, XSections) = (wk.calculation(xc, yc, x_not_outliers, 
                               y_not_outliers, z_not_outliers, prof_not_outliers,
-                rnew, ndata2, cellsize, ncenterx, ncentery, xllcorner, yllcorner))
+                rnew, ndata, cellsize, ncenterx, ncentery, xllcorner, yllcorner))
             
 			# crossSections has been added
             

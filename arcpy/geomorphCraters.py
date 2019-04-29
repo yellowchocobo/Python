@@ -1128,6 +1128,7 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
     slope_lrs = np.zeros(len(idx_circle2)) #lower rim span
     slope_urs = np.zeros(len(idx_circle2)) #upper rim span
     h = np.zeros(len(idx_circle2))
+    depth = np.zeros(len(idx_circle2))
     
     #zall = np.zeros((num,len(idx_circle2)))
     #distall= np.zeros((num,len(idx_circle2)))
@@ -1137,7 +1138,7 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
     
     #get values
     idt = 0
-    depth = 0
+    #depth = 0
 	
 	#dictionary to save the cross sections to
     crossSections = dict()
@@ -1336,11 +1337,9 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
         #average rim height
         h[idt] = zi[idxF]
         
+        # calculate the depth (new way where the min along each cross section is taken)
         depth_tmp = np.min(zi)
-        if depth_tmp < depth:
-            depth = depth_tmp
-        else:
-            None
+        depth[idt] = depth_tmp
         
         idt = idt + 1
     
