@@ -56,9 +56,10 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
     
     os.chdir(path)
         
-    filenames = glob.glob("CPcrater*.asc") #need to fix that if coldspots are included?
-    filenames.sort(key=wk.tokenize)
+    #filenames = glob.glob("CPcrater*.asc") #need to fix that if coldspots are included?
+    #filenames.sort(key=wk.tokenize)
     dataXYD = np.loadtxt(filenameXY,delimiter=";",comments="#")
+    crater_id = np.genfromtxt(filenamecrater,skip_header=1,dtype=str)
     xcrater = dataXYD[:,0]
     ycrater = dataXYD[:,1]
     diam0 = dataXYD[:,2]
@@ -71,12 +72,12 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
     
     #if it is the last step
     
-    for indf, filename in enumerate(filenames):
+    for indf, filename in enumerate(crater_id):
         
         print (indf)
         
         # should be good this way
-        data = np.loadtxt(path + filename, skiprows=6)
+        data = np.loadtxt(path + filename + ".asc", skiprows=6)
         data2 = np.rot90(data)
         data3 = np.rot90(data2)
         data4 = np.rot90(data3)
@@ -91,7 +92,7 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
         # with x = ncols, y = nrows !!! important
                 
         # the number of columns, rows and extent of the raster is read
-        (ncols, nrows, xllcorner, yllcorner, cellsize, NODATA_value) = wk.readheader(path,filename)
+        (ncols, nrows, xllcorner, yllcorner, cellsize, NODATA_value) = wk.readheader(path,filename + ".asc")
         
 
         # if not the same number of rows or columns
@@ -132,35 +133,23 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
         for i in range(nrows):
             yc[i,:] = y
             yce[i,:] = ye
-        
-        # get the cell the closest to the center of the crater (this part has to be changed as the proj is changed)
-        #__, ncenterx = wk.find_nearest(xllcorner+xe, xcrater[indf]) #correspond to columns and x
-        
-        # because yllcorner is from the top left now
-        #__, ncentery = wk.find_nearest(yllcorner+ye,ycrater[indf]) #correspond to rows and y
-        
+                
         # middle of the dtm
         ncentery = int(nrows/2) #Python 3 770/2 is not directly integer anymore
         ncenterx = int(nrows/2)
-        
-        # Average height at 1R, 2R, 3R, 3.5R and 4R from the centre of the crater
-        # (need to be replace with the right centery and x)
-        
+                
         #other places where ncenterx and ncentery is required 
         x1, y1 = wk.xy_circle(1.0*r0[indf], xe[ncenterx], ye[ncentery]) # xe and ye are equals
-        #x2, y2 = wk.xy_circle(2.0*r0[indf], xe[ncenterx], ye[ncentery])
-        #x3, y3 = wk.xy_circle(3.0*r0[indf], xe[ncenterx], ye[ncentery])
-        #x35, y35 = wk.xy_circle(3.5*r0[indf], xe[ncenterx], ye[ncentery])
-        #x4, y4 = wk.xy_circle(4.0*r0[indf], xe[ncenterx], ye[ncentery])
+
         
         # First detrending (a plane is fitted through the elevations taken at circles
         # 2.0 and 3.0R from the center of the crater )
         
         stduse = True #use standard deviation removal
-        ndata = wk.detrending(xc, yc, r0[indf], cellsize, ncenterx, ncentery, data, stduse)
+        ndata = wk.detrending(xc, yc, r0[indf], cellsize, ncenterx, ncentery, data, stduse) # I think it's okay to use xc, yc here
                               
         # txt name
-        name_crater_txt = filename.split('.asc')[0] + 'XY.txt'
+        name_crater_txt = filename + 'XY.txt'
                         
         #and if XY is not found in a certain path
         if os.path.isfile(pathdata + name_crater_txt):
@@ -273,7 +262,7 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
             # I should get rid of the 0,0 counts and should not append it takes way too much time
             
             # temporary name
-            name_crater_png = filename.split('.asc')[0] + 'XY.png'
+            name_crater_png = filename + 'XY.png'
             
             #xarcout = np.append(xarcout, np.array(OptRims[c][0,:]) + xllcorner)
             #yarcout = np.append(yarcout, np.array(OptRims[c][1,:]) + yllcorner)
@@ -281,7 +270,7 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
             plt.ioff()
             plt.figure()
             plt.pcolormesh(xc, yc, ndata2)
-            plt.title(filename.split('.asc')[0],fontsize=16)
+            plt.title(filename,fontsize=16)
             plt.colorbar()
             
             xarcgis = np.array(OptRims[c][0,:])
@@ -318,6 +307,13 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
             plt.plot(xarcgis,yarcgis,"ko")
             plt.plot(x1,y1,"b")
             
+            #fit a circle
+            xnewcenter, ynewcenter, rnew, residu = wk.leastsq_circle(xarcgis,yarcgis)
+                                       
+            #other places where ncenterx and ncentery is required (new calculation)
+            x1n, y1n = wk.xy_circle(1.0*rnew, xnewcenter, ynewcenter)
+            plt.plot(x1n,y1n,"r")
+            
             
             # save plot
             plt.savefig(pathplot + name_crater_png,dpi=300)
@@ -347,15 +343,15 @@ def run2(path, filenameXY, filenamecrater, pathdata):
     '''        
     os.chdir(path)
     
-    filenames = glob.glob("CPcrater*.asc")
-    filenames.sort(key=wk.tokenize)    
-    crater_id = np.genfromtxt(filenamecrater,skip_header=1,dtype=None)
-    dataXYD = np.loadtxt(filenameXY,delimiter=";",comments="#")
-    xcrater = dataXYD[:,0]
-    ycrater = dataXYD[:,1]
-    diam0 = dataXYD[:,2]
-    diam0 = diam0 * 1000.
-    r0 = diam0 /2.    
+    #filenames = glob.glob("CPcrater*.asc")
+    #filenames.sort(key=wk.tokenize)    
+    crater_id = np.genfromtxt(filenamecrater,skip_header=1,dtype=str)
+    #dataXYD = np.loadtxt(filenameXY,delimiter=";",comments="#")
+    #xcrater = dataXYD[:,0]
+    #ycrater = dataXYD[:,1]
+    #diam0 = dataXYD[:,2]
+    #diam0 = diam0 * 1000.
+    #r0 = diam0 /2.    
   
     unc_cse = np.ones(len(crater_id))
     med_cse  = np.ones(len(crater_id))
@@ -399,14 +395,63 @@ def run2(path, filenameXY, filenamecrater, pathdata):
     diam_25  = np.ones(len(crater_id))
     diam_75 = np.ones(len(crater_id))
     diam_min  = np.ones(len(crater_id))
-    diam_max  = np.ones(len(crater_id))     
+    diam_max  = np.ones(len(crater_id))
+
+    unc_crdl = np.ones(len(crater_id))
+    med_crdl = np.ones(len(crater_id))
+    crdl_25 = np.ones(len(crater_id))
+    crdl_75 = np.ones(len(crater_id))
+    crdl_min = np.ones(len(crater_id))
+    crdl_max = np.ones(len(crater_id))
     
-    for indf, filename in enumerate(filenames):
+    unc_frdl = np.ones(len(crater_id))
+    med_frdl = np.ones(len(crater_id))
+    frdl_25 = np.ones(len(crater_id))
+    frdl_75 = np.ones(len(crater_id))
+    frdl_min = np.ones(len(crater_id))
+    frdl_max = np.ones(len(crater_id))
+    
+    unc_rupcw = np.ones(len(crater_id))
+    med_rupcw = np.ones(len(crater_id))
+    rupcw_25 = np.ones(len(crater_id))
+    rupcw_75 = np.ones(len(crater_id))
+    rupcw_min = np.ones(len(crater_id))
+    rupcw_max = np.ones(len(crater_id))
+    
+    unc_rufrc = np.ones(len(crater_id))
+    med_rufrc = np.ones(len(crater_id))
+    rufrc_25 = np.ones(len(crater_id))
+    rufrc_75 = np.ones(len(crater_id))
+    rufrc_min = np.ones(len(crater_id))
+    rufrc_max = np.ones(len(crater_id))
+    
+    unc_lrs = np.ones(len(crater_id))
+    med_lrs = np.ones(len(crater_id))
+    lrs_25 = np.ones(len(crater_id))
+    lrs_75 = np.ones(len(crater_id))
+    lrs_min = np.ones(len(crater_id))
+    lrs_max = np.ones(len(crater_id))
+    
+    unc_urs = np.ones(len(crater_id))
+    med_urs = np.ones(len(crater_id))
+    urs_25 = np.ones(len(crater_id))
+    urs_75 = np.ones(len(crater_id))
+    urs_min = np.ones(len(crater_id))
+    urs_max = np.ones(len(crater_id))
+    
+    unc_fsa = np.ones(len(crater_id))
+    med_fsa = np.ones(len(crater_id))
+    fsa_25 = np.ones(len(crater_id))
+    fsa_75 = np.ones(len(crater_id))
+    fsa_min = np.ones(len(crater_id))
+    fsa_max = np.ones(len(crater_id))
+    
+    for indf, filename in enumerate(crater_id):
     
         print (indf)
         
         # load data
-        data = np.loadtxt(path + filename, skiprows=6)
+        data = np.loadtxt(path + filename + ".asc", skiprows=6)
         data2 = np.rot90(data)
         data3 = np.rot90(data2)
         data4 = np.rot90(data3)
@@ -418,11 +463,11 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         del data4
         
         # txt name
-        name_crater_txt = filename.split('.asc')[0] + 'XY.txt'
+        name_crater_txt = filename + 'XY.txt'
         
 
         # the number of columns, rows and extent of the raster is read
-        (ncols, nrows, xllcorner, yllcorner, cellsize, NODATA_value) = wk.readheader(path,filename)
+        (ncols, nrows, xllcorner, yllcorner, cellsize, NODATA_value) = wk.readheader(path, filename + ".asc")
         
         # if not the same number of rows or columns
         if ncols > nrows:
@@ -467,6 +512,13 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         zarcgis = datagis[:,2]
         profgis = datagis[:,3]
         flaggis = datagis[:,4]
+        
+        # new get rid of nan values
+        xarcgis =  xarcgis[~np.isnan(xarcgis)]
+        yarcgis =  yarcgis[~np.isnan(yarcgis)]
+        zarcgis =  zarcgis[~np.isnan(zarcgis)]
+        profgis =  profgis[~np.isnan(profgis)]
+        flaggis =  flaggis[~np.isnan(flaggis)]
                
         #get rid of outliers 
         #Q1 = np.percentile(zarcgis,25.)
@@ -494,9 +546,13 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         xnewcenter, ynewcenter, rnew, residu = wk.leastsq_circle(x_not_outliers,y_not_outliers)
                     
         # get the cell the closest to the center of the crater (new calculation)
+        # (not good, use xnewcenter and ynewcenter)
         __, ncenterx = wk.find_nearest(xe,xnewcenter)
         __, ncentery = wk.find_nearest(ye,ynewcenter)
-
+        
+        # new
+        #ncenterx = np.int(np.round(xnewcenter,decimals=0))
+        #ncentery = np.int(np.round(ynewcenter,decimals=0))
                    
         #other places where ncenterx and ncentery is required (new calculation)
         #x1, y1 = wk.xy_circle(1.0*rnew, xe[ncentery], ye[ncenterx])
@@ -506,15 +562,19 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         # with new center of the circle
         try:
             stduse = True
-            ndata = wk.detrending(xc, yc, rnew, cellsize, ncenterx_old, ncentery_old, data, stduse) #detrending
+            
+            # here change the center of the craters!
+            ndata = wk.detrending(xc, yc, rnew, cellsize, ncenterx, ncentery, data, stduse) #detrending            
+            #ndata = wk.detrending(xc, yc, rnew, cellsize, ncenterx_old, ncentery_old, data, stduse) #detrending
             # with old data otherwise sometimes the dem area is not large enough
             
             # the second detrending through the selected maximum elevation points are done
             stduse = False
-            Z2 = wk.linear3Ddetrending(x_not_outliers,y_not_outliers,z_not_outliers, xc, yc, stduse)
+            #Z2 = wk.linear3Ddetrending(x_not_outliers,y_not_outliers,z_not_outliers, xc, yc, stduse)
+            ndata2 = wk.detrending_rim(xc, yc, rnew, cellsize, ncenterx, ncentery, ndata, stduse)
                 
             # the detrended plane is substracted to the DEM (with the newly detected)
-            ndata2 = ndata - Z2
+            #ndata2 = ndata - Z2
             
             
             # I should actually rerun the rim detection things one  more time
@@ -522,7 +582,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             
             
             #need to put some indices there (maybe, they will have different sizes)
-            (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs,
+            (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs,  crdl, frdl,
             h, depth, diam, nnn, prf, crossSections, YSections, XSections) = (wk.calculation(xc, yc, x_not_outliers, 
                               y_not_outliers, z_not_outliers, prof_not_outliers,
                 rnew, ndata2, cellsize, ncenterx, ncentery, xllcorner, yllcorner))
@@ -578,13 +638,70 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             diam_min[indf] = np.nanmin(diam)
             diam_max[indf] = np.nanmax(diam)
             
+            ##
+            unc_rupcw[indf] = np.nanstd(R_upcw)/np.sqrt(nnn)
+            med_rupcw[indf] = np.nanmedian(R_upcw)
+            rupcw_25[indf] = np.nanpercentile(R_upcw,25)
+            rupcw_75[indf] = np.nanpercentile(R_upcw,75)
+            rupcw_min[indf] = np.nanmin(R_upcw)
+            rupcw_max[indf] = np.nanmax(R_upcw)
+            
+            unc_rufrc[indf] = np.nanstd(R_ufrc)/np.sqrt(nnn)
+            med_rufrc[indf] = np.nanmedian(R_ufrc)
+            rufrc_25[indf] = np.nanpercentile(R_ufrc,25)
+            rufrc_75[indf] = np.nanpercentile(R_ufrc,75)
+            rufrc_min[indf] = np.nanmin(R_ufrc)
+            rufrc_max[indf] = np.nanmax(R_ufrc)
+            
+            unc_lrs[indf] = np.nanstd(slope_lrs)/np.sqrt(nnn)
+            med_lrs[indf] = np.nanmedian(slope_lrs)
+            lrs_25[indf] = np.nanpercentile(slope_lrs,25)
+            lrs_75[indf] = np.nanpercentile(slope_lrs,75)
+            lrs_min[indf] = np.nanmin(slope_lrs)
+            lrs_max[indf] = np.nanmax(slope_lrs)
+            
+            unc_urs[indf] = np.nanstd(slope_urs)/np.sqrt(nnn)
+            med_urs[indf] = np.nanmedian(slope_urs)
+            urs_25[indf] = np.nanpercentile(slope_urs,25)
+            urs_75[indf] = np.nanpercentile(slope_urs,75)
+            urs_min[indf] = np.nanmin(slope_urs)
+            urs_max[indf] = np.nanmax(slope_urs)
+            
+            unc_fsa[indf] = np.nanstd(slope_fsa)/np.sqrt(nnn)
+            med_fsa[indf] = np.nanmedian(slope_fsa)
+            fsa_25[indf] = np.nanpercentile(slope_fsa,25)
+            fsa_75[indf] = np.nanpercentile(slope_fsa,75)
+            fsa_min[indf] = np.nanmin(slope_fsa)
+            fsa_max[indf] = np.nanmax(slope_fsa)
+            
+            unc_crdl[indf] = np.nanstd(crdl)/np.sqrt(nnn)
+            med_crdl[indf] = np.nanmedian(crdl)
+            crdl_25[indf] = np.nanpercentile(crdl,25)
+            crdl_75[indf] = np.nanpercentile(crdl,75)
+            crdl_min[indf] = np.nanmin(crdl)
+            crdl_max[indf] = np.nanmax(crdl)
+            
+            unc_frdl[indf] = np.nanstd(frdl)/np.sqrt(nnn)
+            med_frdl[indf] = np.nanmedian(frdl)
+            frdl_25[indf] = np.nanpercentile(frdl,25)
+            frdl_75[indf] = np.nanpercentile(frdl,75)
+            frdl_min[indf] = np.nanmin(frdl)
+            frdl_max[indf] = np.nanmax(frdl)
+            
                     
             header_txt = ('mdiam;udiam;diam25;diam75;diam_min;diam_max;' + 
                           'mdepth;udepth;depth25;depth75;depth_min;depth_max;' + 
                           'mh;uh;h25;h75;hmin;hmax;' +
                           'm_mcw;u_mcw;mcw_25;mcw_75;mcw_min;mcw_max;' +
                           'm_ucw;u_ucw;ucw_25;ucw_75;ucw_min;ucw_max;' +
-                          'mcse;ucse;cse_25;cse_75;cse_min;cse_max;')
+                          'mcse;ucse;cse_25;cse_75;cse_min;cse_max;'
+                          'mrupcw;urupcw;rupcw_25;rupcw_75;rupcw_min;rupcw_max;'
+                          'mrufrc;urufrc;rufrc_25;rufrc_75;rufrc_min;rufrc_max;'
+                          'mlrs;ulrs;lrs_25;lrs_75;lrs_min;lrs_max;'
+                          'murs;uurs;urs_25;urs_75;urs_min;urs_max;'
+                          'mfsa;ufsa;fsa_25;fsa_75;fsa_min;fsa_max;'
+                          'mcrdl;ucrdl;crdl_25;crdl_75;crdl_min;crdl_max;'
+                          'mfrdl;ufrdl;frdl_25;frdl_75;frdl_min;frdl_max')
             
         except:
             unc_cse[indf] = np.nan
@@ -629,27 +746,95 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             diam_min[indf] = np.nan
             diam_max[indf] = np.nan
             
+            ##
+            unc_rupcw[indf] = np.nan
+            med_rupcw[indf] = np.nan
+            rupcw_25[indf] = np.nan
+            rupcw_75[indf] = np.nan
+            rupcw_min[indf] = np.nan
+            rupcw_max[indf] = np.nan
+            
+            unc_rufrc[indf] = np.nan
+            med_rufrc[indf] = np.nan
+            rufrc_25[indf] = np.nan
+            rufrc_75[indf] = np.nan
+            rufrc_min[indf] = np.nan
+            rufrc_max[indf] = np.nan
+            
+            unc_lrs[indf] = np.nan
+            med_lrs[indf] = np.nan
+            lrs_25[indf] = np.nan
+            lrs_75[indf] = np.nan
+            lrs_min[indf] = np.nan
+            lrs_max[indf] = np.nan
+            
+            unc_urs[indf] = np.nan
+            med_urs[indf] = np.nan
+            urs_25[indf] = np.nan
+            urs_75[indf] = np.nan
+            urs_min[indf] = np.nan
+            urs_max[indf] = np.nan
+            
+            unc_fsa[indf] = np.nan
+            med_fsa[indf] = np.nan
+            fsa_25[indf] = np.nan
+            fsa_75[indf] = np.nan
+            fsa_min[indf] = np.nan
+            fsa_max[indf] = np.nan
+            
+            unc_crdl[indf] = np.nan
+            med_crdl[indf] = np.nan
+            crdl_25[indf] = np.nan
+            crdl_75[indf] = np.nan
+            crdl_min[indf] = np.nan
+            crdl_max[indf] = np.nan
+            
+            unc_frdl[indf] = np.nan
+            med_frdl[indf] = np.nan
+            frdl_25[indf] = np.nan
+            frdl_75[indf] = np.nan
+            frdl_min[indf] = np.nan
+            frdl_max[indf] = np.nan            
+            
             header_txt = ('mdiam;udiam;diam25;diam75;diam_min;diam_max;' + 
-              'mdepth;udepth;depth25;depth75;depth_min;depth_max;' + 
-              'mh;uh;h25;h75;hmin;hmax;' +
-              'm_mcw;u_mcw;mcw_25;mcw_75;mcw_min;mcw_max;' +
-              'm_ucw;u_ucw;ucw_25;ucw_75;ucw_min;ucw_max;' +
-              'mcse;ucse;cse_25;cse_75;cse_min;cse_max;')
+                          'mdepth;udepth;depth25;depth75;depth_min;depth_max;' + 
+                          'mh;uh;h25;h75;hmin;hmax;' +
+                          'm_mcw;u_mcw;mcw_25;mcw_75;mcw_min;mcw_max;' +
+                          'm_ucw;u_ucw;ucw_25;ucw_75;ucw_min;ucw_max;' +
+                          'mcse;ucse;cse_25;cse_75;cse_min;cse_max;'
+                          'mrupcw;urupcw;rupcw_25;rupcw_75;rupcw_min;rupcw_max;'
+                          'mrufrc;urufrc;rufrc_25;rufrc_75;rufrc_min;rufrc_max;'
+                          'mlrs;ulrs;lrs_25;lrs_75;lrs_min;lrs_max;'
+                          'murs;uurs;urs_25;urs_75;urs_min;urs_max;'
+                          'mfsa;ufsa;fsa_25;fsa_75;fsa_min;fsa_max;'
+                          'mcrdl;ucrdl;crdl_25;crdl_75;crdl_min;crdl_max;'
+                          'mfrdl;ufrdl;frdl_25;frdl_75;frdl_min;frdl_max')
+            
+            #if it fails cross sections does not work
             
         # txt name
-        name_crater_f = filename.split('.asc')[0] + '_res.txt'
+        name_crater_f = filename + '_res.txt'
             
         arc = np.column_stack((med_diam[indf], diamf[indf], diam_25[indf], diam_75[indf], diam_min[indf], diam_max[indf],
                                med_depth[indf], depthf[indf], depth_25[indf], depth_75[indf], depth_min[indf], depth_max[indf],
                                med_h[indf], unc_h[indf], h_25[indf], h_75[indf], h_min[indf], h_max[indf], 
                                med_mcw[indf], unc_mcw[indf], mcw_25[indf], mcw_75[indf], mcw_min[indf], mcw_max[indf],
                                med_ucw[indf], unc_ucw[indf], ucw_25[indf], ucw_75[indf], ucw_min[indf], ucw_max[indf],
-                               med_cse[indf], unc_cse[indf], cse_25[indf], cse_75[indf], cse_min[indf], cse_max[indf]))
+                               med_cse[indf], unc_cse[indf], cse_25[indf], cse_75[indf], cse_min[indf], cse_max[indf],
+                               med_rupcw[indf], unc_rupcw[indf], rupcw_25[indf], rupcw_75[indf], rupcw_min[indf], rupcw_max[indf],
+                               med_rufrc[indf], unc_rufrc[indf], rufrc_25[indf], rufrc_75[indf], rufrc_min[indf], rufrc_max[indf],
+                               med_lrs[indf], unc_lrs[indf], lrs_25[indf], lrs_75[indf], lrs_min[indf], lrs_max[indf],
+                               med_urs[indf], unc_urs[indf], urs_25[indf], urs_75[indf], urs_min[indf], urs_max[indf],
+                               med_fsa[indf], unc_fsa[indf], fsa_25[indf], fsa_75[indf], fsa_min[indf], fsa_max[indf],
+                               med_crdl[indf], unc_crdl[indf], crdl_25[indf], crdl_75[indf], crdl_min[indf], crdl_max[indf],
+                               med_frdl[indf], unc_frdl[indf], frdl_25[indf], frdl_75[indf], frdl_min[indf], frdl_max[indf]))
         
         np.savetxt(pathdata + name_crater_f, arc, delimiter = ";", header=header_txt,fmt='%10.5f', comments='#')
 		
         # added part about saving cross sections. I still need to test if this good or not
-        name_crater_cross = filename.split('.asc')[0] + '_cross_sections.txt'
+        name_crater_crossX = filename + '_cross_sectionsX.txt'
+        name_crater_crossY = filename + '_cross_sectionsY.txt'
+        name_crater_crossZ = filename + '_cross_sectionsZ.txt'
         
         # in order to save it I have to transform the dictionnary into an array
         # I need to get the maximum length
@@ -679,16 +864,24 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             arrayY_crossSections[:maxlength_crossSections,xx_tmp] = YSections[xx_tmp]
             arrayX_crossSections[:maxlength_crossSections,xx_tmp] = XSections[xx_tmp]
         
-        datacross = np.column_stack((arrayY_crossSections, arrayX_crossSections, array_crossSections))
-        np.savetxt(pathdata + name_crater_cross, datacross, delimiter = ";",fmt='%10.5f', comments='#')
+        np.savetxt(pathdata + name_crater_crossX, arrayX_crossSections, delimiter = ";",fmt='%10.5f', comments='#')
+        np.savetxt(pathdata + name_crater_crossY, arrayY_crossSections, delimiter = ";",fmt='%10.5f', comments='#')
+        np.savetxt(pathdata + name_crater_crossZ, array_crossSections, delimiter = ";",fmt='%10.5f', comments='#')                              
+		
 		
     return (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             med_depth, depthf, depth_25, depth_75, depth_min, depth_max, 
             med_h, unc_h, h_25, h_75, h_min, h_max,
             med_mcw, unc_mcw, mcw_25, mcw_75, mcw_min, mcw_max,
             med_ucw, unc_ucw, ucw_25, ucw_75, ucw_min, ucw_max,
-            med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max)
-
+            med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max,
+            med_rupcw, unc_rupcw, rupcw_25, rupcw_75, rupcw_min, rupcw_max,
+            med_rufrc, unc_rufrc, rufrc_25, rufrc_75, rufrc_min, rufrc_max,
+            med_lrs, unc_lrs, lrs_25, lrs_75, lrs_min, lrs_max,
+            med_urs, unc_urs, urs_25, urs_75, urs_min, urs_max,
+            med_fsa, unc_fsa, fsa_25, fsa_75, fsa_min, fsa_max,
+            med_crdl, unc_crdl, crdl_25, crdl_75, crdl_min, crdl_max,
+            med_frdl, unc_frdl, frdl_25, frdl_75, frdl_min, frdl_max)
 '''
 **************************************************************************
 '''
@@ -704,10 +897,8 @@ def mergedata(path,pathdata,filenamecrater):
     
     
     os.chdir(path)
-    
-    filenames = glob.glob("crater*.asc")
-    filenames.sort(key=wk.tokenize)    
-    crater_id = np.genfromtxt(filenamecrater,skip_header=1,dtype=None)
+       
+    crater_id = np.genfromtxt(filenamecrater,skip_header=1,dtype=str)
     
     unc_cse = np.ones(len(crater_id))
     med_cse  = np.ones(len(crater_id))
@@ -739,32 +930,100 @@ def mergedata(path,pathdata,filenamecrater):
     h_min  = np.ones(len(crater_id))
     h_max  = np.ones(len(crater_id))    
     
+    med_depth = np.ones(len(crater_id))
     depthf = np.ones(len(crater_id))
+    depth_25  = np.ones(len(crater_id))
+    depth_75 = np.ones(len(crater_id))
+    depth_min  = np.ones(len(crater_id))
+    depth_max  = np.ones(len(crater_id))  
     
     diamf = np.ones(len(crater_id))
     med_diam = np.ones(len(crater_id))
     diam_25  = np.ones(len(crater_id))
     diam_75 = np.ones(len(crater_id))
     diam_min  = np.ones(len(crater_id))
-    diam_max  = np.ones(len(crater_id))   
+    diam_max  = np.ones(len(crater_id))
     
-    for indf, filename in enumerate(filenames):
+    med_rupcw  = np.ones(len(crater_id))
+    unc_rupcw  = np.ones(len(crater_id))
+    rupcw_25  = np.ones(len(crater_id))
+    rupcw_75  = np.ones(len(crater_id))
+    rupcw_min  = np.ones(len(crater_id))
+    rupcw_max  = np.ones(len(crater_id))
     
-        name_crater_f = filename.split('.asc')[0] + '_res.txt'
+    med_rufrc  = np.ones(len(crater_id))
+    unc_rufrc  = np.ones(len(crater_id))
+    rufrc_25  = np.ones(len(crater_id))
+    rufrc_75  = np.ones(len(crater_id))
+    rufrc_min  = np.ones(len(crater_id))
+    rufrc_max  = np.ones(len(crater_id))
+    
+    med_lrs  = np.ones(len(crater_id))
+    unc_lrs  = np.ones(len(crater_id))
+    lrs_25  = np.ones(len(crater_id))
+    lrs_75  = np.ones(len(crater_id))
+    lrs_min  = np.ones(len(crater_id))
+    lrs_max  = np.ones(len(crater_id))
+    
+    med_urs  = np.ones(len(crater_id))
+    unc_urs  = np.ones(len(crater_id))
+    urs_25  = np.ones(len(crater_id))
+    urs_75  = np.ones(len(crater_id))
+    urs_min  = np.ones(len(crater_id))
+    urs_max  = np.ones(len(crater_id))
+    
+    med_fsa  = np.ones(len(crater_id))
+    unc_fsa  = np.ones(len(crater_id))
+    fsa_25  = np.ones(len(crater_id))
+    fsa_75  = np.ones(len(crater_id))
+    fsa_min  = np.ones(len(crater_id))
+    fsa_max  = np.ones(len(crater_id))
+    
+    med_crdl  = np.ones(len(crater_id))
+    unc_crdl  = np.ones(len(crater_id))
+    crdl_25  = np.ones(len(crater_id))
+    crdl_75  = np.ones(len(crater_id))
+    crdl_min  = np.ones(len(crater_id))
+    crdl_max  = np.ones(len(crater_id))
+    
+    med_frdl  = np.ones(len(crater_id))
+    unc_frdl  = np.ones(len(crater_id))
+    frdl_25  = np.ones(len(crater_id))
+    frdl_75  = np.ones(len(crater_id))
+    frdl_min  = np.ones(len(crater_id))
+    frdl_max  = np.ones(len(crater_id))
+    
+    for indf, filename in enumerate(crater_id):
+    
+        name_crater_f = filename + '_res.txt'
         
         (med_diam[indf], diamf[indf], diam_25[indf], diam_75[indf], diam_min[indf], diam_max[indf], 
-         depthf[indf], 
+         med_depth[indf], depthf[indf], depth_25[indf], depth_75[indf], depth_min[indf], depth_max[indf], 
          med_h[indf], unc_h[indf], h_25[indf], h_75[indf], h_min[indf], h_max[indf],
          med_mcw[indf], unc_mcw[indf], mcw_25[indf], mcw_75[indf], mcw_min[indf], mcw_max[indf],
          med_ucw[indf], unc_ucw[indf], ucw_25[indf], ucw_75[indf], ucw_min[indf], ucw_max[indf],
-         med_cse[indf], unc_cse[indf], cse_25[indf], cse_75[indf], cse_min[indf], cse_max[indf]) = np.loadtxt(pathdata + name_crater_f,delimiter=";", comments="#")
+         med_cse[indf], unc_cse[indf], cse_25[indf], cse_75[indf], cse_min[indf], cse_max[indf],
+         med_rupcw[indf], unc_rupcw[indf], rupcw_25[indf], rupcw_75[indf], rupcw_min[indf], rupcw_max[indf],
+         med_rufrc[indf], unc_rufrc[indf], rufrc_25[indf], rufrc_75[indf], rufrc_min[indf], rufrc_max[indf],
+         med_lrs[indf], unc_lrs[indf], lrs_25[indf], lrs_75[indf], lrs_min[indf], lrs_max[indf],
+         med_urs[indf], unc_urs[indf], urs_25[indf], urs_75[indf], urs_min[indf], urs_max[indf],
+         med_fsa[indf], unc_fsa[indf], fsa_25[indf], fsa_75[indf], fsa_min[indf], fsa_max[indf],
+         med_crdl[indf], unc_crdl[indf], crdl_25[indf], crdl_75[indf], crdl_min[indf], crdl_max[indf],
+         med_frdl[indf], unc_frdl[indf], frdl_25[indf], frdl_75[indf], frdl_min[indf], frdl_max[indf]) = np.loadtxt(pathdata + name_crater_f,delimiter=";", comments="#")
         
     return (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
-            depthf, 
+            med_depth, depthf, depth_25, depth_75, depth_min, depth_max, 
             med_h, unc_h, h_25, h_75, h_min, h_max,
             med_mcw, unc_mcw, mcw_25, mcw_75, mcw_min, mcw_max,
             med_ucw, unc_ucw, ucw_25, ucw_75, ucw_min, ucw_max,
-            med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max)
+            med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max,
+            med_rupcw, unc_rupcw, rupcw_25, rupcw_75, rupcw_min, rupcw_max,
+            med_rufrc, unc_rufrc, rufrc_25, rufrc_75, rufrc_min, rufrc_max,
+            med_lrs, unc_lrs, lrs_25, lrs_75, lrs_min, lrs_max,
+            med_urs, unc_urs, urs_25, urs_75, urs_min, urs_max,
+            med_fsa, unc_fsa, fsa_25, fsa_75, fsa_min, fsa_max,
+            med_crdl, unc_crdl, crdl_25, crdl_75, crdl_min, crdl_max,
+            med_frdl, unc_frdl, frdl_25, frdl_75, frdl_min, frdl_max)
       
 '''
 **************************************************************************
@@ -772,13 +1031,13 @@ def mergedata(path,pathdata,filenamecrater):
 
 # define the folder containing the DTMs, and the folders where the plot
 # and data routines will save data
-path = 'D:/ANALYSIS/NAC_DTM/ASCII/'
-pathplot = 'D:/ANALYSIS/NAC_DTM/plots/'
-pathdata = 'D:/ANALYSIS/NAC_DTM/data/'
+path = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_ASCII/'
+pathplot = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_PLOT2D/'
+pathdata = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_DATA2D/'
 
 # Location + cratername
-filenameXY = 'dataXYD_cp.txt'
-filenamecrater = 'crater_id_cp.txt'
+filenameXY = 'dataXYD.txt'
+filenamecrater = 'crater_id.txt'
 
 #make directory if not existing
 ifnot_mkdir(pathplot)
@@ -789,11 +1048,18 @@ run1(path, filenameXY, filenamecrater, pathplot, pathdata)
 
 # run step 2
 (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
-            med_depth, depthf, depth_25, depth_75, depth_min, depth_max,
+            med_depth, depthf, depth_25, depth_75, depth_min, depth_max, 
             med_h, unc_h, h_25, h_75, h_min, h_max,
             med_mcw, unc_mcw, mcw_25, mcw_75, mcw_min, mcw_max,
             med_ucw, unc_ucw, ucw_25, ucw_75, ucw_min, ucw_max,
-            med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max) = run2(path, filenameXY, filenamecrater, pathdata)
+            med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max,
+            med_rupcw, unc_rupcw, rupcw_25, rupcw_75, rupcw_min, rupcw_max,
+            med_rufrc, unc_rufrc, rufrc_25, rufrc_75, rufrc_min, rufrc_max,
+            med_lrs, unc_lrs, lrs_25, lrs_75, lrs_min, lrs_max,
+            med_urs, unc_urs, urs_25, urs_75, urs_min, urs_max,
+            med_fsa, unc_fsa, fsa_25, fsa_75, fsa_min, fsa_max,
+            med_crdl, unc_crdl, crdl_25, crdl_75, crdl_min, crdl_max,
+            med_frdl, unc_frdl, frdl_25, frdl_75, frdl_min, frdl_max) = run2(path, filenameXY, filenamecrater, pathdata)
 
 
 ## load data 
@@ -803,7 +1069,14 @@ run1(path, filenameXY, filenamecrater, pathplot, pathdata)
             med_h, unc_h, h_25, h_75, h_min, h_max,
             med_mcw, unc_mcw, mcw_25, mcw_75, mcw_min, mcw_max,
             med_ucw, unc_ucw, ucw_25, ucw_75, ucw_min, ucw_max,
-            med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max) = mergedata(path,pathdata,filenamecrater)
+            med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max,
+            med_rupcw, unc_rupcw, rupcw_25, rupcw_75, rupcw_min, rupcw_max,
+            med_rufrc, unc_rufrc, rufrc_25, rufrc_75, rufrc_min, rufrc_max,
+            med_lrs, unc_lrs, lrs_25, lrs_75, lrs_min, lrs_max,
+            med_urs, unc_urs, urs_25, urs_75, urs_min, urs_max,
+            med_fsa, unc_fsa, fsa_25, fsa_75, fsa_min, fsa_max,
+            med_crdl, unc_crdl, crdl_25, crdl_75, crdl_min, crdl_max,
+            med_frdl, unc_frdl, frdl_25, frdl_75, frdl_min, frdl_max) = mergedata(path,pathdata,filenamecrater)
 
 
 header_txt = ('mdiam;udiam;diam25;diam75;diam_min;diam_max;' + 
@@ -811,18 +1084,34 @@ header_txt = ('mdiam;udiam;diam25;diam75;diam_min;diam_max;' +
                           'mh;uh;h25;h75;hmin;hmax;' +
                           'm_mcw;u_mcw;mcw_25;mcw_75;mcw_min;mcw_max;' +
                           'm_ucw;u_ucw;ucw_25;ucw_75;ucw_min;ucw_max;' +
-                          'mcse;ucse;cse_25;cse_75;cse_min;cse_max;dD')
+                          'mcse;ucse;cse_25;cse_75;cse_min;cse_max;dD;'
+                          'mrupcw;urupcw;rupcw_25;rupcw_75;rupcw_min;rupcw_max;'
+                          'mrufrc;urufrc;rufrc_25;rufrc_75;rufrc_min;rufrc_max;'
+                          'mlrs;ulrs;lrs_25;lrs_75;lrs_min;lrs_max;'
+                          'murs;uurs;urs_25;urs_75;urs_min;urs_max;'
+                          'mfsa;ufsa;fsa_25;fsa_75;fsa_min;fsa_max;'
+                          'mcrdl;ucrdl;crdl_25;crdl_75;crdl_min;crdl_max;'
+                          'mfrdl;ufrdl;frdl_25;frdl_75;frdl_min;frdl_max')
 
 dD = (med_h-med_depth) / med_diam
 
-name_crater_f = 'final_res_small_craters_cp.txt'
+# calculate volume here
+
+name_crater_f = 'final_res2D.txt'
             
 arc = np.column_stack((med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             med_depth, depthf, depth_25, depth_75, depth_min, depth_max,  
             med_h, unc_h, h_25, h_75, h_min, h_max,
             med_mcw, unc_mcw, mcw_25, mcw_75, mcw_min, mcw_max,
             med_ucw, unc_ucw, ucw_25, ucw_75, ucw_min, ucw_max,
-            med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max, dD))
+            med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max, dD,
+            med_rupcw, unc_rupcw, rupcw_25, rupcw_75, rupcw_min, rupcw_max,
+            med_rufrc, unc_rufrc, rufrc_25, rufrc_75, rufrc_min, rufrc_max,
+            med_lrs, unc_lrs, lrs_25, lrs_75, lrs_min, lrs_max,
+            med_urs, unc_urs, urs_25, urs_75, urs_min, urs_max,
+            med_fsa, unc_fsa, fsa_25, fsa_75, fsa_min, fsa_max,
+            med_crdl, unc_crdl, crdl_25, crdl_75, crdl_min, crdl_max,
+            med_frdl, unc_frdl, frdl_25, frdl_75, frdl_min, frdl_max)) # and volume somewhere
         
 np.savetxt(pathdata + name_crater_f, arc, delimiter = ";", header=header_txt,fmt='%10.5f', comments='#') 
         

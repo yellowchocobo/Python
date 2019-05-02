@@ -145,8 +145,8 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
         # First detrending (a plane is fitted through the elevations taken at circles
         # 2.0 and 3.0R from the center of the crater )
         
-        stduse = True #use standard deviation removal
-        ndata = wk.detrending(xc, yc, r0[indf], cellsize, ncenterx, ncentery, data, stduse)
+        #stduse = True #use standard deviation removal
+        #ndata = wk.detrending(xc, yc, r0[indf], cellsize, ncenterx, ncentery, data, stduse)
                               
         # txt name
         name_crater_txt = filename + 'XY.txt'
@@ -189,7 +189,7 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
             (col_coord_ME, row_coord_ME, col_cells_ME, row_cells_ME, elev_ME, prof_ME,
              col_coord_LE, row_coord_LE, col_cells_LE, row_cells_LE, elev_LE, prof_LE,
              col_coord_BS, row_coord_BS, col_cells_BS, row_cells_BS, elev_BS, prof_BS) = (
-             wk.rim(xc, yc, ncenterx, ncentery, ndata, r0[indf], 
+             wk.rim(xc, yc, ncenterx, ncentery, data, r0[indf], 
                     cellsize, slen, minclust, mingrade, first_run))
             
             
@@ -269,7 +269,7 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
             
             plt.ioff()
             plt.figure()
-            plt.pcolormesh(xc, yc, ndata)
+            plt.pcolormesh(xc, yc, data)
             plt.title(filename,fontsize=16)
             plt.colorbar()
             
@@ -564,7 +564,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             stduse = True
             
             # here change the center of the craters!
-            ndata = wk.detrending(xc, yc, rnew, cellsize, ncenterx, ncentery, data, stduse) #detrending            
+            #ndata = wk.detrending(xc, yc, rnew, cellsize, ncenterx, ncentery, data, stduse) #detrending            
             #ndata = wk.detrending(xc, yc, rnew, cellsize, ncenterx_old, ncentery_old, data, stduse) #detrending
             # with old data otherwise sometimes the dem area is not large enough
             
@@ -584,7 +584,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs,  crdl, frdl,
             h, depth, diam, nnn, prf, crossSections, YSections, XSections) = (wk.calculation(xc, yc, x_not_outliers, 
                               y_not_outliers, z_not_outliers, prof_not_outliers,
-                rnew, ndata, cellsize, ncenterx, ncentery, xllcorner, yllcorner))
+                rnew, data, cellsize, ncenterx, ncentery, xllcorner, yllcorner))
             
 			# crossSections has been added
             
@@ -1031,8 +1031,8 @@ def mergedata(path,pathdata,filenamecrater):
 # define the folder containing the DTMs, and the folders where the plot
 # and data routines will save data
 path = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_ASCII/'
-pathplot = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_PLOT1D/'
-pathdata = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_DATA1D/'
+pathplot = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_PLOTNOD/'
+pathdata = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_DATANOD/'
 
 # Location + cratername
 filenameXY = 'dataXYD.txt'
@@ -1096,7 +1096,7 @@ dD = (med_h-med_depth) / med_diam
 
 # calculate volume here
 
-name_crater_f = 'final_res1D.txt'
+name_crater_f = 'final_res_nod.txt'
             
 arc = np.column_stack((med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             med_depth, depthf, depth_25, depth_75, depth_min, depth_max,  

@@ -238,6 +238,101 @@ def detrending(xc, yc, radius, cellsize, ncenterx, ncentery, data, stduse):
     ndata = data - Z
     
     return ndata
+
+
+'''
+******************************************************************************
+'''
+
+def detrending_rim(xc, yc, radius, cellsize, ncenterx, ncentery, data, stduse):
+    
+    '''
+    I guess that is how they are doing in Watters and co-authors (2015)
+    
+    Elevations are extracted at 3r and 3.5 from the centre of the crater. A linear
+    plane is fitted through those two circles and substracted to the DEM
+    
+    ndata = detrending(xc, yc, x35, y35, x3, y3, data)
+    
+    xc and yc should be the center of the cells because x35 and y35 ..
+    are now computed for the center of the cells
+    
+    17.10 - should be good now!!
+    18.10 - modified so it is still running if the radius is going outside of the zone
+    22.10 - modified so it takes all values between 2R and 3R
+    '''
+    
+    # in map coordinates
+        
+    x2, y2 = xy_circle((0.9*radius) / cellsize, ncenterx, ncentery)
+    
+    x3, y3 = xy_circle((1.1*radius) / cellsize, ncenterx, ncentery)
+              
+    (x2, y2, x3, y3) = (np.round(x2).astype('int'), np.round(y2).astype('int'),
+                               np.round(x3).astype('int'), np.round(y3).astype('int'))
+    
+    '''
+    **************************
+    '''
+    # sample at two times
+    num = np.int((radius / cellsize) * 2.0)
+    
+    # empty array
+    yfcoord = []
+    xfcoord = []
+    
+    for i in range(len(x2)):
+
+        # the starting coordinates move all the time and correspond to the boundary of 
+        # the 2R circle
+        centerx = x2[i]
+        centery = y2[i]
+        
+        # the end coordinates correspond to the boundary of the 3R circle
+        ncol = x3[i]
+        nrow = y3[i]
+                
+        # the distance is calculated, should be equal to two times the radius
+        cols, rows = np.linspace(centerx, ncol, num), np.linspace(centery, nrow, num)
+        
+        # only integer here
+        (cols, rows) = (np.round(cols).astype('int'), np.round(rows).astype('int'))
+        
+        #need to get rid of repetitions
+        rep = np.zeros((len(cols),2))
+        rep[:,0] = cols
+        rep[:,1] = rows
+        __, index = np.unique(["{}{}".format(ix, j) for ix,j in rep], return_index=True)
+        
+        for idetec in index:
+            xfcoord.append(cols[idetec])
+            yfcoord.append(rows[idetec])
+    
+    
+    # these correspond to all coordinates between 2R and 3R                
+    xfcoord = np.array(xfcoord)
+    yfcoord = np.array(yfcoord)
+
+    '''
+    **************************
+    '''
+            
+    # elevations are extracted for the map coordinates
+    z = data[xfcoord,yfcoord]
+
+   
+    # and x- and y-coordinates in meters (this is correct now)
+    x = xc[xfcoord,yfcoord]
+    y = yc[xfcoord,yfcoord]
+      
+    
+    # the detrending routine is used (check that again)
+    Z = linear3Ddetrending(x, y, z, xc, yc, stduse)
+    
+    # the detrended linear plane is substracted to the data
+    ndata = data - Z
+    
+    return ndata
     
 
 '''
@@ -1011,9 +1106,12 @@ def rim_composite(col_coord_ME, row_coord_ME, col_cells_ME,
 ''' 
 
 def leastsq_circle(x,y):
+    
+    # should only take not nan values
+    
     # coordinates of the barycenter
-    x_m = np.mean(x)
-    y_m = np.mean(y)
+    x_m = np.nanmean(x)
+    y_m = np.nanmean(y)
     center_estimate = x_m, y_m
     center, ier = optimize.leastsq(f, center_estimate, args=(x,y))
     xc, yc = center
@@ -1129,6 +1227,8 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
     slope_urs = np.zeros(len(idx_circle2)) #upper rim span
     h = np.zeros(len(idx_circle2))
     depth = np.zeros(len(idx_circle2))
+    crdl = np.zeros(len(idx_circle2))
+    frdl = np.zeros(len(idx_circle2))
     
     #zall = np.zeros((num,len(idx_circle2)))
     #distall= np.zeros((num,len(idx_circle2)))
@@ -1195,7 +1295,7 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
         #find nearest value to the average radius (need to change that), does not work perfectly
         #value_nearest, idx_nearest = find_nearest(dist, dist1R) #closest to the actual value
         
-        #or
+        #ok
         value_nearest, idx_nearest = find_nearest(zi, ndata[ncol_1r,nrow_1r])
         
         diamd[idt] = dist[idx_nearest] * 2.0
@@ -1211,6 +1311,7 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
         E , idxE = find_nearest(dist_norm,0.9)
         F , idxF = find_nearest(dist_norm,1.0)
         G , idxG = find_nearest(dist_norm,1.2)
+        H , idxH = find_nearest(dist_norm,2.0) # should be the maximum or end of the profile
         
         '''
         **************************************************************************
@@ -1341,14 +1442,74 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
         depth_tmp = np.min(zi)
         depth[idt] = depth_tmp
         
+        '''
+        **************************************************************************
+        '''
+        
+        # flank rim decay length
+        interval_frdl = zi[idxF:idxH] # I think I can not use idxH+1 otherwise it is outside
+        dist_frdl = dist[idxF:idxH]
+        
+        try:
+            a, b = curve_fit(linear, dist_frdl, interval_frdl)
+            xs = np.linspace(np.min(dist_frdl),np.max(dist_frdl),100)
+            ys = linear(xs,*a)
+            
+            #calculate the slope
+            tetarad = np.arctan((ys[-1] - ys[0]) / (xs[-1] - xs[0]))
+            slope_frdl = np.abs(tetarad * (180./np.pi))
+            
+            # get the maximum slope
+            slope_frdl_max = np.nanmax(slope_frdl)
+            
+            # where it is the closest of half the maximum
+            __, idx_frdl = find_nearest(slope_frdl, slope_frdl_max/2.0)
+            
+            # get the distance at half the maximum
+            frdl[idt] = dist_frdl[idx_frdl]
+            
+        except:
+            frdl[idt] = np.nan
+            
+        '''
+        **************************************************************************
+        '''
+            
+        # cavity rim decay length
+        interval_crdl = zi[idxA:idxF+1] # I think I can not use idxH+1 otherwise it is outside
+        dist_crdl = dist[idxA:idxF+1]
+        
+        try:
+            a, b = curve_fit(linear, dist_crdl, interval_crdl)
+            xs = np.linspace(np.min(dist_crdl),np.max(dist_crdl),100)
+            ys = linear(xs,*a)
+            
+            #calculate the slope
+            tetarad = np.arctan((ys[-1] - ys[0]) / (xs[-1] - xs[0]))
+            slope_crdl = np.abs(tetarad * (180./np.pi))
+            
+            # get the maximum slope
+            slope_crdl_max = np.nanmax(slope_crdl)
+            
+            # where it is the closest of half the maximum
+            __, idx_crdl = find_nearest(slope_crdl, slope_crdl_max/2.0)
+            
+            # get the distance at half the maximum
+            crdl[idt] = dist_frdl[idx_crdl]
+            
+            # volume gets calculate afterwards from calculate_volume.py
+            
+        except:
+            crdl[idt] = np.nan
+        
         idt = idt + 1
     
         '''
         **************************************************************************
         '''
-        # decay cavity and rim
         
-    return (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs,
+        
+    return (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs, crdl, frdl,
             h, depth, diamd, len(idx_circle2), prof_uni_detected, crossSections, YSections, XSections)
     
 '''

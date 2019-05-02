@@ -11,10 +11,10 @@ phase angles, ground azimuth but different phases
 '''	
 
 # main path
-path = "X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LAYERS"
+path = "D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/"
 
 # file to copy (locations of preliminary rims)
-infile = "X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/rayed_craters_UPD_NILS"
+infile = "D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/rayed_craters_UPD_NILS"
 
 # Set overwrite option
 arcpy.env.overwriteOutput = True
@@ -23,7 +23,7 @@ arcpy.CheckOutExtension("3D")
 arcpy.CheckOutExtension("Spatial")
 
 # define paths and workspace (I need to create the gdb at some points)
-env.workspace = env.scratchWorkspace = path + "/layers2019.gdb"
+env.workspace = env.scratchWorkspace = r"D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/"
 
 '''
 **************************************************************************************************
@@ -31,10 +31,10 @@ env.workspace = env.scratchWorkspace = path + "/layers2019.gdb"
 
 # extract the centers of craters (OK regardless of the projection)
 
-arcpy.FeatureToPoint_management(infile, 'CENTER', 
+arcpy.FeatureToPoint_management(infile, 'CENTERN', 
 								"CENTROID")
 
-infile2 = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/CENTER'								
+infile2 = "CENTERN"								
 								
 # crater name and buffer extent
 fieldname1 = arcpy.ValidateFieldName("CRATER_ID")
@@ -55,7 +55,7 @@ with arcpy.da.UpdateCursor(infile, ["Diam_km", "CRATER_ID"]) as cursor:
 	ix = 0
 	for row in cursor:
 		a = 'crater' + str(int(ix)).zfill(4)
-		buffer_value = np.round((row[0]/2.) * 4.0, decimals=4)
+		buffer_value = np.round((row[0]/2.) * 8.0, decimals=4) # changed to 8
 		b = str(buffer_value) + ' Kilometers'	
 		row[1] = a
 		cursor.updateRow(row)
@@ -89,15 +89,15 @@ dissolveField = "Distance"
 										  
 # This will later be done to all features
 arcpy.env.addOutputsToMap = 0
-outASCII = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/ASCII_28022019/'
+outASCII = "D:/ANALYSIS/SIMPLECRATERS_MOON/ASCII_30042019/"
 
 # make a lyr
-arcpy.MakeFeatureLayer_management("CENTER", "CENTER_lyr")
+arcpy.MakeFeatureLayer_management(infile2, infile2 + "_lyr")
 
 '''
 **************************************************************************************************
 '''
-with arcpy.da.UpdateCursor("CENTER_lyr", ["Shape@", "x_coord", "y_coord"]) as cursor:
+with arcpy.da.UpdateCursor(infile2 + "_lyr", ["Shape@", "x_coord", "y_coord"]) as cursor:
 	ix = 0
 	for row in cursor:
 		print (ix)
@@ -106,10 +106,10 @@ with arcpy.da.UpdateCursor("CENTER_lyr", ["Shape@", "x_coord", "y_coord"]) as cu
 		else:
 			#query selection CENTER
 			query = "CRATER_ID = '" + crater_id[ix] + "'"
-			arcpy.SelectLayerByAttribute_management("CENTER_lyr", "NEW_SELECTION", query)
+			arcpy.SelectLayerByAttribute_management(infile2 + "_lyr", "NEW_SELECTION", query)
 			
 			# make a layer of the selection
-			arcpy.CopyFeatures_management("CENTER_lyr", "CENTER_TMP")
+			arcpy.CopyFeatures_management(infile2 + "_lyr", "CENTER_TMP")
 			
 			# old coordinate systems
 			desc = arcpy.Describe("CENTER_TMP")
@@ -136,12 +136,12 @@ with arcpy.da.UpdateCursor("CENTER_lyr", ["Shape@", "x_coord", "y_coord"]) as cu
 			arcpy.Buffer_analysis("CENTER_PROJ", out, bufferField, sideType, endType, dissolveType)
 
 			# run feature to envelope tool
-			arcpy.FeatureEnvelopeToPolygon_management("X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/miniarea_TMP",
-													  "X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/miniarea_square",
+			arcpy.FeatureEnvelopeToPolygon_management("D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/miniarea_TMP",
+													  "D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/miniarea_square",
 													  "SINGLEPART")
 													  
 			#reproject in normal
-			arcpy.Project_management(in_dataset="miniarea_square", out_dataset="X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/miniarea_square2", out_coor_system="PROJCS['Equirectangular_Moon',GEOGCS['GCS_Moon',DATUM['D_Moon',SPHEROID['Moon_localRadius',1737400.0,0.0]],PRIMEM['Reference_Meridian',0.0],UNIT['Degree',0.0174532925199433]],PROJECTION['Plate_Carree'],PARAMETER['false_easting',0.0],PARAMETER['false_northing',0.0],PARAMETER['central_meridian',0.0],UNIT['Meter',1.0]]", transform_method="", in_coor_system=spatialReference_new, preserve_shape="NO_PRESERVE_SHAPE", max_deviation="", vertical="NO_VERTICAL")
+			arcpy.Project_management(in_dataset="miniarea_square", out_dataset="D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/miniarea_square2", out_coor_system="PROJCS['Equirectangular_Moon',GEOGCS['GCS_Moon',DATUM['D_Moon',SPHEROID['Moon_localRadius',1737400.0,0.0]],PRIMEM['Reference_Meridian',0.0],UNIT['Degree',0.0174532925199433]],PROJECTION['Plate_Carree'],PARAMETER['false_easting',0.0],PARAMETER['false_northing',0.0],PARAMETER['central_meridian',0.0],UNIT['Meter',1.0]]", transform_method="", in_coor_system=spatialReference_new, preserve_shape="NO_PRESERVE_SHAPE", max_deviation="", vertical="NO_VERTICAL")
 											
 											
 			# get the extent of miniarea_square (but this is in the new coordinates! So there is a problem in the next steps
@@ -157,14 +157,14 @@ with arcpy.da.UpdateCursor("CENTER_lyr", ["Shape@", "x_coord", "y_coord"]) as cu
 											
 											
 			# The following inputs are layers or table views: "dtm", "square_test"
-			arcpy.Clip_management(in_raster="Z:/SLDEM2015/Lunar_LRO_LrocKaguya_DEMmerge_60N60S_512ppd.tif", rectangle= ExtStr, out_raster="X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/dtm_clip", in_template_dataset="miniarea_square2", nodata_value="-3.402823e+038", clipping_geometry="NONE", maintain_clipping_extent="NO_MAINTAIN_EXTENT")
+			arcpy.Clip_management(in_raster="Z:/SLDEM2015/Lunar_LRO_LrocKaguya_DEMmerge_60N60S_512ppd.tif", rectangle= ExtStr, out_raster="D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/dtm_clip", in_template_dataset="miniarea_square2", nodata_value="-3.402823e+038", clipping_geometry="NONE", maintain_clipping_extent="NO_MAINTAIN_EXTENT")
 			
 			desc_DTM = arcpy.Describe("dtm_clip")
 			spatialReference_DTM = desc_DTM.spatialReference
 			
 			# Replace a layer/table view name with a path to a dataset (which can be a layer file) or create the layer/table view within the script
 			# The following inputs are layers or table views: "Lunar_LRO_LrocKaguya_DEMmerg13"
-			arcpy.ProjectRaster_management(in_raster="dtm_clip", out_raster= "X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/dtm_clipn", out_coor_system=spatialReference_new, resampling_type="NEAREST", cell_size="59.2252937999999 59.2252937999983", geographic_transform="", Registration_Point="", in_coor_system=spatialReference_DTM)
+			arcpy.ProjectRaster_management(in_raster="dtm_clip", out_raster= "D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/dtm_clipn", out_coor_system=spatialReference_new, resampling_type="NEAREST", cell_size="59.2252937999999 59.2252937999983", geographic_transform="", Registration_Point="", in_coor_system=spatialReference_DTM)
 			
 			#low filter pass?
 			
@@ -174,11 +174,12 @@ with arcpy.da.UpdateCursor("CENTER_lyr", ["Shape@", "x_coord", "y_coord"]) as cu
 			# Project raster
 			
 			# or I could convert it to ascii
-			arcpy.RasterToASCII_conversion(inRas, outASCII + crater_id[ix] + '.asc')
+			arcpy.RasterToASCII_conversion(inRas, outASCII + crater_id[ix] + ".asc")
 			
 			ix = ix + 1
-			arcpy.Delete_management("X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/dtm_clip")
-			arcpy.Delete_management("X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/dtm_clipn")
+            
+			arcpy.Delete_management("D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/dtm_clip")
+			arcpy.Delete_management("D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/dtm_clipn")
 			arcpy.Delete_management("miniarea_square")
 			arcpy.Delete_management("miniarea_square2")
 			arcpy.Delete_management("miniarea_TMP")
