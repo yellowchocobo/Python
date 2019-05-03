@@ -13,6 +13,7 @@ import copy
 
 sys.path.append('M:/Nils/Python/arcpy/') 
 import geomorphCraters as wk
+import calculate_volume as cv
 
 path = 'X:/Moon/downloading/STEPMED/ASCIIreproj/'
 pathplot = 'X:/Moon/downloading/STEPMED/plots_detection_ndata2_05112018/'
@@ -1031,12 +1032,20 @@ def mergedata(path,pathdata,filenamecrater):
 
 # define the folder containing the DTMs, and the folders where the plot
 # and data routines will save data
-path = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_ASCII/'
-pathplot = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_PLOT2D/'
-pathdata = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_DATA2D/'
+#path = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_ASCII/'
+#pathplot = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_PLOT2D/'
+#pathdata = 'X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_DATA2D/'
+
+#path = 'D:/ANALYSIS/SIMPLECRATERS_MOON/may_2019/ascii/'
+#pathplot = 'D:/ANALYSIS/SIMPLECRATERS_MOON/may_2019/double_detrending/plots/'
+#pathdata = 'D:/ANALYSIS/SIMPLECRATERS_MOON/may_2019/double_detrending/data/'
+
+path = 'D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/ASCII/'
+pathplot = 'D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/double_detrending/plots/'
+pathdata = 'D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/double_detrending/data/'
 
 # Location + cratername
-filenameXY = 'dataXYD.txt'
+filenameXY = 'data.txt'
 filenamecrater = 'crater_id.txt'
 
 #make directory if not existing
@@ -1079,6 +1088,10 @@ run1(path, filenameXY, filenamecrater, pathplot, pathdata)
             med_frdl, unc_frdl, frdl_25, frdl_75, frdl_min, frdl_max) = mergedata(path,pathdata,filenamecrater)
 
 
+## volume
+
+
+
 header_txt = ('mdiam;udiam;diam25;diam75;diam_min;diam_max;' + 
                           'mdepth;udepth;depth25;depth75;depth_min;depth_max;' + 
                           'mh;uh;h25;h75;hmin;hmax;' +
@@ -1091,11 +1104,12 @@ header_txt = ('mdiam;udiam;diam25;diam75;diam_min;diam_max;' +
                           'murs;uurs;urs_25;urs_75;urs_min;urs_max;'
                           'mfsa;ufsa;fsa_25;fsa_75;fsa_min;fsa_max;'
                           'mcrdl;ucrdl;crdl_25;crdl_75;crdl_min;crdl_max;'
-                          'mfrdl;ufrdl;frdl_25;frdl_75;frdl_min;frdl_max')
+                          'mfrdl;ufrdl;frdl_25;frdl_75;frdl_min;frdl_max;vol')
 
 dD = (med_h-med_depth) / med_diam
 
 # calculate volume here
+vol = cv.main(path, pathdata, filenamecrater)
 
 name_crater_f = 'final_res2D.txt'
             
@@ -1111,7 +1125,7 @@ arc = np.column_stack((med_diam, diamf, diam_25, diam_75, diam_min, diam_max,
             med_urs, unc_urs, urs_25, urs_75, urs_min, urs_max,
             med_fsa, unc_fsa, fsa_25, fsa_75, fsa_min, fsa_max,
             med_crdl, unc_crdl, crdl_25, crdl_75, crdl_min, crdl_max,
-            med_frdl, unc_frdl, frdl_25, frdl_75, frdl_min, frdl_max)) # and volume somewhere
+            med_frdl, unc_frdl, frdl_25, frdl_75, frdl_min, frdl_max, vol)) # and volume somewhere
         
 np.savetxt(pathdata + name_crater_f, arc, delimiter = ";", header=header_txt,fmt='%10.5f', comments='#') 
         

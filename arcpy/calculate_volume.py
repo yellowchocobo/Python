@@ -14,6 +14,11 @@ import scipy.spatial as ss
 import numpy as np
 
 '''
+Problem what if, the detected rim is incomplete (then it will underestimate the 
+volume of the crater)
+'''
+
+'''
 **************************************************************************************************
 '''
 def tetrahedron_volume(a, b, c, d):
@@ -157,13 +162,15 @@ def main(path, pathdata, filenamecrater):
     header_txt = ('volume')
     name_crater_v = filenamecrater.split(".txt")[0] + '_vol.txt'
     np.savetxt(pathdata + name_crater_v, np.column_stack(vol), delimiter = ";", header=header_txt,fmt='%10.5f', comments='#')
+               
+    return vol
 
 '''
 **************************************************************************************************
 '''
 
-path = "X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_ASCII/"
-pathdata = "X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_DATA1D/"
-filenamecrater = "crater_id.txt"
+#path = "X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_ASCII/"
+#pathdata = "X:/Moon/ANALYSIS/SIMPLECRATERS_MOON/LINNE_DATA1D/"
+#filenamecrater = "crater_id.txt"
     
-main(path, pathdata, filenamecrater)
+#main(path, pathdata, filenamecrater)

@@ -1199,11 +1199,15 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
     idx_detected1 = np.zeros((len(x_not_outliers),2))
     idx_detected1[:,0] = (x_not_outliers)/cellsize
     idx_detected1[:,1] = (y_not_outliers)/cellsize
+    
+    # don't really need to take the integers?
     idx_detected1 = idx_detected1.astype('int')
         
     __, index = np.unique(["{}{}".format(i, j) for i,j in idx_detected1], return_index=True)
     idx_detected1_uni = idx_detected1[index,:] #I think that this work
     prof_uni_detected = prof_not_outliers[index] #still contain zeros
+    
+    # I should also maybe take only detected rim points within 0.9 to 1.1 rnew?
           
     
     # 2r from the center of the  crater
@@ -1251,6 +1255,358 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
         ncol = ii[0]
         nrow = ii[1]
         
+        jj = idx_detected1_uni[idt]
+        ncol_1r = jj[0]
+        nrow_1r = jj[1]
+        
+        ## indices of detected rim
+        #jj = idx_detected1_uni[pp[0]]
+        
+        #nrowd = jj[0]
+        #ncold = jj[1]
+           
+        # the distance is calculated, should be equal to two times the radius
+        cols, rows = np.linspace(ncenterx, ncol, num), np.linspace(ncentery, nrow, num)
+        
+
+        # Extract the values along the line, using cubic interpolation and the 
+        # map coordinates
+        zi = scipy.ndimage.map_coordinates(ndata, np.vstack((cols,rows))) # changed here 
+        
+        #plt.scatter(xc[cols.astype('int'),rows.astype('int')],yc[cols.astype('int'),rows.astype('int')],c=zi,s=50)
+        
+        #zall[:,idt] = zi
+               
+        # calculate the distance along the profile 2
+        dist_cells = np.sqrt(((cols - ncenterx)**2.) + ((rows - ncentery)**2.))
+        dist = dist_cells * cellsize #I guess it is what they call s in Geiger
+		
+		# I should here save each profile that could later on be used (either saved in a dictionary or 
+		# directly save to a text file. I would prefer first to be saved in a dictionary and then
+		# save to a text file) HERE MODIFY
+        crossSections[crossi] = zi[:]
+        XSections[crossi] = cols
+        YSections[crossi] = rows
+        
+        #I would also like to save the location x, y of the data
+        
+        
+        #distall[:,idt] = dist #this is going to be big for every profile
+        
+        #distance to maximum or local elevation        
+        #dist1R = np.sqrt(  ((yc[ncenterx,ncentery]-yc[ncol_1r,nrow_1r])**2.) + ((xc[ncenterx,ncentery]-xc[ncol_1r,nrow_1r])**2.) )
+        
+        #find nearest value to the average radius (need to change that), does not work perfectly
+        #value_nearest, idx_nearest = find_nearest(dist, dist1R) #closest to the actual value
+        
+        # ncol_1r and nrow_1r needs to be integer
+        value_nearest, idx_nearest = find_nearest(zi, ndata[ncol_1r,nrow_1r])
+        
+        diamd[idt] = dist[idx_nearest] * 2.0
+        
+        #distance normalized 
+        dist_norm = dist/dist[idx_nearest]
+                
+        # find index
+        A , idxA = find_nearest(dist_norm,0.0)
+        B , idxB = find_nearest(dist_norm,0.1)
+        C , idxC = find_nearest(dist_norm,0.7)
+        D , idxD = find_nearest(dist_norm,0.8)
+        E , idxE = find_nearest(dist_norm,0.9)
+        F , idxF = find_nearest(dist_norm,1.0)
+        G , idxG = find_nearest(dist_norm,1.2)
+        H , idxH = find_nearest(dist_norm,2.0) # should be the maximum or end of the profile
+        
+        '''
+        **************************************************************************
+        '''
+        # for upper cavity-wall radius of curvature
+        # radius of circle fitted to the profile from D to F
+        interval_upcw = zi[idxD:idxF+1]
+        dist_upcw = dist[idxD:idxF+1]
+        
+        # we are interest in R_upcw
+        #x_upcw, y_upcw, R_upcw, residu =leastsq_circle(dist_upcw,interval_upcw)
+        try:
+            __, __, R_upcw[idt], __ =leastsq_circle(dist_upcw,interval_upcw)
+            
+        except:
+            R_upcw[idt] = np.nan
+        
+        
+        '''
+        **************************************************************************
+        '''
+        # for upper flank radius of curvature
+        interval_ufrc = zi[idxF:idxG+1]
+        dist_ufrc = dist[idxF:idxG+1]
+        
+        #x_ufrc, y_ufrc, R_ufrc, residu =leastsq_circle(dist_ufrc,interval_ufrc)
+        
+        # new addition
+        try:
+            __, __, R_ufrc[idt], __ =leastsq_circle(dist_ufrc,interval_ufrc)
+            
+        except:
+            R_ufrc[idt] = np.nan
+        
+        '''
+        **************************************************************************
+        '''
+        
+        # cavity shape exponent
+        interval_cse = zi[idxB:idxE+1]
+        dist_cse = dist[idxB:idxE+1]
+        
+        try:
+            a, b = curve_fit(power,dist_cse,interval_cse)
+                
+            exponent = a[1]
+            cse[idt] = exponent
+            
+        except:
+            cse[idt] = np.nan
+        
+        '''
+        **************************************************************************
+        '''
+        
+        # middle cavity wall slope angle
+        #line fitted through
+        interval_mcw = zi[idxC:idxE+1]
+        dist_mcw = dist[idxC:idxE+1]
+        
+        try:
+            a, b = curve_fit(linear, dist_mcw, interval_mcw)
+            xs = np.linspace(np.min(dist_mcw),np.max(dist_mcw),100)
+            ys = linear(xs,*a)
+            
+            #calculate the slope
+            tetarad = np.arctan((ys[-1] - ys[0]) / (xs[-1] - xs[0]))
+            slope_mcw[idt] = tetarad * (180./np.pi)
+            
+        except:
+            slope_mcw[idt] = np.nan
+        
+        '''
+        **************************************************************************
+        '''
+        
+        # upper cavity wall slope angle
+        interval_ucw = zi[idxD:idxF+1]
+        dist_ucw = dist[idxD:idxF+1]
+        
+        try:
+            a, b = curve_fit(linear, dist_ucw, interval_ucw)
+            xs = np.linspace(np.min(dist_ucw),np.max(dist_ucw),100)
+            ys = linear(xs,*a)
+            
+            #calculate the slope
+            tetarad = np.arctan((ys[-1] - ys[0]) / (xs[-1] - xs[0]))
+            slope_ucw[idt] = tetarad * (180./np.pi)
+            
+        except:
+            slope_ucw[idt] = np.nan
+        
+        
+        '''
+        **************************************************************************
+        '''
+        
+        # flank slope angle
+        interval_fsa = zi[idxF:idxG+1]
+        dist_fsa = dist[idxF:idxG+1]             
+        
+        try:
+            a, b = curve_fit(linear, dist_fsa, interval_fsa)
+            xs = np.linspace(np.min(dist_fsa),np.max(dist_fsa),100)
+            ys = linear(xs,*a)
+            
+            #calculate the slope
+            tetarad = np.arctan((ys[-1] - ys[0]) / (xs[-1] - xs[0]))
+            slope_fsa[idt] = np.abs(tetarad * (180./np.pi))
+            
+            #upper and lower rim span
+            slope_urs[idt] = 180. -  (slope_ucw[idt] + slope_fsa[idt])
+            slope_lrs[idt] =  180. - (slope_mcw[idt] + slope_fsa[idt])
+            
+        except:
+            slope_fsa[idt] = np.nan
+            slope_urs[idt] = np.nan
+            slope_lrs[idt] = np.nan
+        
+        '''
+        **************************************************************************
+        '''
+    
+        #average rim height
+        h[idt] = zi[idxF]
+        
+        # calculate the depth (new way where the min along each cross section is taken)
+        depth_tmp = np.min(zi)
+        depth[idt] = depth_tmp
+        
+        '''
+        **************************************************************************
+        '''
+        
+        # flank rim decay length
+        interval_frdl = zi[idxF:idxH] # I think I can not use idxH+1 otherwise it is outside
+        dist_frdl = dist[idxF:idxH] # The question is the rim flank going all the way up to 2 radius?
+        
+        try:
+            
+            frdlx1 = dist_frdl[:-1]
+            frdlx2 = dist_frdl[1:]
+            frdly1 = interval_frdl[:-1]
+            frdly2 = interval_frdl[1:]
+            
+            dx = frdlx2 - frdlx1
+            dy = frdly2 - frdly1
+            
+            tetarad = np.arctan(dy/dx)
+            slope_frdl = np.abs(tetarad * (180./np.pi))
+            
+            # get the maximum slope
+            slope_frdl_max = np.nanmax(slope_frdl)
+            
+            # where it is the closest of half the maximum
+            __, idx_frdl = find_nearest(slope_frdl, slope_frdl_max/2.0)
+            
+            # get the distance at half the maximum
+            frdl[idt] = dist_frdl[idx_frdl] - dist[idxF]
+            
+        except:
+            frdl[idt] = np.nan
+            
+        '''
+        **************************************************************************
+        '''
+            
+        # cavity rim decay length
+        interval_crdl = zi[idxA:idxF+1] # I think I can not use idxH+1 otherwise it is outside
+        dist_crdl = dist[idxA:idxF+1]
+        
+        try:
+            crdlx1 = dist_crdl[:-1]
+            crdlx2 = dist_crdl[1:]
+            crdly1 = interval_crdl[:-1]
+            crdly2 = interval_crdl[1:]
+            
+            dx = crdlx2 - crdlx1
+            dy = crdly2 - crdly1
+            
+            tetarad = np.arctan(dy/dx)
+            slope_crdl = np.abs(tetarad * (180./np.pi))
+            
+            # get the maximum slope
+            slope_crdl_max = np.nanmax(slope_crdl)
+            
+            # where it is the closest of half the maximum
+            __, idx_crdl = find_nearest(slope_crdl, slope_crdl_max/2.0)
+            
+            # get the distance at half the maximum
+            crdl[idt] = dist[idxF] - dist_crdl[idx_crdl]
+            
+            # volume gets calculate afterwards from calculate_volume.py
+            
+        except:
+            crdl[idt] = np.nan
+        
+        idt = idt + 1
+    
+        '''
+        **************************************************************************
+        '''
+        
+        
+    return (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs, crdl, frdl,
+            h, depth, diamd, len(idx_circle2), prof_uni_detected, crossSections, YSections, XSections)
+
+
+
+'''
+******************************************************************************
+'''
+
+def calculation_alt(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not_outliers,
+                Rn, ndata, cellsize, ncenterx, ncentery, xllcorner, yllcorner):
+    
+    '''
+    03.05.2019: 
+    I was trying here to find an alternative to only using the "detected" crater rim. 
+    The problem is that for profiles where the rim is not detected, calculations for the
+    different morphological parameters (which, depends on the accurate detection of the crater rim)
+    will not work...
+
+    I was looking if I could take simply the newly calculated radius of the crater.                                                  
+    
+
+    
+    
+    '''
+    #-- Extract the line...
+    # Make a line with "num" points...
+    
+    # get new circle
+    xnewcenter, ynewcenter, rnew, residu = leastsq_circle(x_not_outliers,y_not_outliers)
+    
+    # one radius
+    x1, y1 = xy_circle(1.0*rnew, xnewcenter, ynewcenter)
+    x1_idx = x1 / cellsize
+    y1_idx = y1 / cellsize
+    
+    # two radius
+    x2, y2 = xy_circle(2.0*rnew, xnewcenter, ynewcenter)
+    x2_idx = x2 / cellsize
+    y2_idx = y2 / cellsize
+    
+    # Find unique indices from detected (other way), does it have to be an integer?
+    idx_circle2 = np.zeros((len(x2_idx),2))
+    idx_circle2[:,0] = x2_idx
+    idx_circle2[:,1] = y2_idx
+    
+    # samples at half the cellsize 
+    num = np.int(np.ceil(2.0*Rn/cellsize)*2.0)
+    
+    
+    # I need to define all empty arrays here
+    diamd = np.zeros(len(idx_circle2))
+    R_upcw = np.zeros(len(idx_circle2))
+    R_ufrc = np.zeros(len(idx_circle2))
+    cse = np.zeros(len(idx_circle2))
+    slope_mcw = np.zeros(len(idx_circle2))
+    slope_ucw = np.zeros(len(idx_circle2))
+    slope_fsa = np.zeros(len(idx_circle2))
+    slope_lrs = np.zeros(len(idx_circle2)) #lower rim span
+    slope_urs = np.zeros(len(idx_circle2)) #upper rim span
+    h = np.zeros(len(idx_circle2))
+    depth = np.zeros(len(idx_circle2))
+    crdl = np.zeros(len(idx_circle2))
+    frdl = np.zeros(len(idx_circle2))
+    
+    #zall = np.zeros((num,len(idx_circle2)))
+    #distall= np.zeros((num,len(idx_circle2)))
+    
+	# maybe use delete_redundant function here? on idx_circle2?
+	# I think it's okay see above at L1100-1108
+    
+    #get values
+    idt = 0
+    #depth = 0
+	
+	#dictionary to save the cross sections to
+    crossSections = dict()
+    XSections = dict()
+    YSections = dict()
+    
+    # need to think here
+    for crossi, ii in enumerate(idx_circle2):
+                
+        ncol = ii[0]
+        nrow = ii[1]
+        
+        # for estimating the median diameter
         jj = idx_detected1_uni[idt]
         ncol_1r = jj[0]
         nrow_1r = jj[1]
@@ -1511,7 +1867,10 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
         
     return (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs, crdl, frdl,
             h, depth, diamd, len(idx_circle2), prof_uni_detected, crossSections, YSections, XSections)
-    
+
+
+
+   
 '''
 ******************************************************************************
 '''
