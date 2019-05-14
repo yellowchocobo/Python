@@ -44,6 +44,12 @@ for SLDEM (1x1):
     
     http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-sldem2013-v1.0/lon359/data/DTM_MAP_01_N00E359S01E000SC.img
     
+    http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-sldem2013-v1.0/lon359/data/DTM_MAP_01_S45E350S46E351SC.img
+    
+
+For orthoimages (3x3)    
+    http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-ortho-map-v2.0/
+    
 
 to transfrom from .img to .tif:
     gdal_translate DTM_MAP_01_N03E060N02E061SC.lbl DTM_MAP_01_N03E060N02E061SC.tif
