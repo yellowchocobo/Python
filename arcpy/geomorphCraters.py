@@ -1110,12 +1110,17 @@ def leastsq_circle(x,y):
     # should only take not nan values
     
     # coordinates of the barycenter
-    x_m = np.nanmean(x)
-    y_m = np.nanmean(y)
+    
+    xt = x[~np.isnan(x)]
+    yt = y[~np.isnan(y)]
+    
+    x_m = np.nanmean(xt)
+    y_m = np.nanmean(yt)
     center_estimate = x_m, y_m
-    center, ier = optimize.leastsq(f, center_estimate, args=(x,y))
+    
+    center, ier = optimize.leastsq(f, center_estimate, args=(xt,yt))    
     xc, yc = center
-    Ri       = calc_R(x, y, *center)
+    Ri       = calc_R(xt, yt, *center)
     R        = Ri.mean()
     residu   = np.sum((Ri - R)**2)
     return xc, yc, R, residu
@@ -1136,6 +1141,7 @@ def f(c, x, y):
     """ calculate the algebraic distance between the data points and the mean circle centered at c=(xc, yc) """
     Ri = calc_R(x, y, *c)
     return Ri - Ri.mean()
+
 
 '''
 ******************************************************************************

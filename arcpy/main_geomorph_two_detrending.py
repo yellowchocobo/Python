@@ -15,9 +15,9 @@ sys.path.append('M:/Nils/Python/arcpy/')
 import geomorphCraters as wk
 import calculate_volume as cv
 
-path = 'X:/Moon/downloading/STEPMED/ASCIIreproj/'
-pathplot = 'X:/Moon/downloading/STEPMED/plots_detection_ndata2_05112018/'
-pathdata = 'X:/Moon/downloading/STEPMED/ndata2_05112018/'
+#path = 'X:/Moon/downloading/STEPMED/ASCIIreproj/'
+#pathplot = 'X:/Moon/downloading/STEPMED/plots_detection_ndata2_05112018/'
+#pathdata = 'X:/Moon/downloading/STEPMED/ndata2_05112018/'
 
 
 '''
@@ -86,7 +86,7 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
         del data
         del data2
         del data3
-        data = copy.deepcopy(data4*0.50) #multiplying factor of the elevation
+        data = copy.deepcopy(data4) #multiplying factor of the elevation (not for kaguya, 0.5 for Kaguya + LOLA)
         del data4
         
         #correspond to orgin in the lower-left corner and data[x,y] 
@@ -95,31 +95,12 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
         # the number of columns, rows and extent of the raster is read
         (ncols, nrows, xllcorner, yllcorner, cellsize, NODATA_value) = wk.readheader(path,filename + ".asc")
         
-
-        # if not the same number of rows or columns
-        if ncols > nrows:
-            data = data[:nrows,:nrows]
-            ncols = nrows
-        elif nrows > ncols:
-            data = data[:ncols,:ncols]
-            nrows = ncols
-        else:
-            pass
+        # get x, y
+        x = np.linspace(0,(ncols-1)*cellsize,ncols)
+        y = np.linspace(0,(nrows-1)*cellsize,nrows)
         
-                
-        #print diam
-        # x and y axes are created (x and y have the same size so it is not a big deal
-        # if we mix up here)
-        x = np.arange(0,((ncols)*cellsize),cellsize) 
-        y = np.arange(0,((nrows)*cellsize),cellsize)
-        
-        # x and y at the center of the cell
-        xe = np.arange(cellsize/2.,((ncols)*cellsize),cellsize)
-        ye = np.arange(cellsize/2.,((nrows)*cellsize),cellsize)
-        
-        if len(x) > len(xe):
-            x = x[:len(xe)]
-            y = y[:len(xe)]
+        xe = np.linspace(cellsize/2.0, (cellsize/2.0) + ((ncols-1)*cellsize), ncols)
+        ye = np.linspace(cellsize/2.0, (cellsize/2.0) + ((nrows-1)*cellsize), nrows)
         
         # create my own matrices for the plotting with pcolor or pcolormesh
         xc = np.zeros_like(data)
@@ -127,17 +108,17 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
         xce = np.zeros_like(data)
         yce = np.zeros_like(data)
         
-        for i in range(ncols):
+        for i in range(nrows):
             xc[:,i] = x
             xce[:,i] = xe
             
-        for i in range(nrows):
+        for i in range(ncols):
             yc[i,:] = y
             yce[i,:] = ye
                 
-        # middle of the dtm
-        ncentery = int(nrows/2) #Python 3 770/2 is not directly integer anymore
-        ncenterx = int(nrows/2)
+        # middle of the dtm (this has to change!)
+        ncentery = int(nrows/2) # changed
+        ncenterx = int(ncols/2) # changed
                 
         #other places where ncenterx and ncentery is required 
         x1, y1 = wk.xy_circle(1.0*r0[indf], xe[ncenterx], ye[ncentery]) # xe and ye are equals
@@ -460,7 +441,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         del data
         del data2
         del data3
-        data = copy.deepcopy(data4*0.50) # multiplying by scaling factor
+        data = copy.deepcopy(data4) # multiplying by scaling factor (*0.50 for Kaguya+LOLA)
         del data4
         
         # txt name
@@ -470,27 +451,14 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         # the number of columns, rows and extent of the raster is read
         (ncols, nrows, xllcorner, yllcorner, cellsize, NODATA_value) = wk.readheader(path, filename + ".asc")
         
-        # if not the same number of rows or columns
-        if ncols > nrows:
-            data = data[:nrows,:nrows]
-            ncols = nrows
-        elif nrows > ncols:
-            data = data[:ncols,:ncols]
-            nrows = ncols
-        else:
-            pass
+        #print diam
+        # x and y axes are created (x and y have the same size so it is not a big deal
+        # if we mix up here)
+        x = np.linspace(0,(ncols-1)*cellsize,ncols)
+        y = np.linspace(0,(nrows-1)*cellsize,nrows)
         
-        # define a few variables
-        x = np.arange(0,((ncols)*cellsize),cellsize) 
-        y = np.arange(0,((nrows)*cellsize),cellsize)
-        
-        # x and y at the center of the cell
-        xe = np.arange(cellsize/2.,((ncols)*cellsize),cellsize)
-        ye = np.arange(cellsize/2.,((nrows)*cellsize),cellsize)
-        
-        if len(x) > len(xe):
-            x = x[:len(xe)]
-            y = y[:len(xe)]
+        xe = np.linspace(cellsize/2.0, (cellsize/2.0) + ((ncols-1)*cellsize), ncols)
+        ye = np.linspace(cellsize/2.0, (cellsize/2.0) + ((nrows-1)*cellsize), nrows)
         
         # create my own matrices for the plotting with pcolor or pcolormesh
         xc = np.zeros_like(data)
@@ -498,13 +466,27 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         xce = np.zeros_like(data)
         yce = np.zeros_like(data)
         
-        for i in range(ncols):
+        for i in range(nrows):
             xc[:,i] = x
             xce[:,i] = xe
             
-        for i in range(nrows):
+        for i in range(ncols):
             yc[i,:] = y
             yce[i,:] = ye
+        
+        # create my own matrices for the plotting with pcolor or pcolormesh
+        xc = np.zeros_like(data)
+        yc = np.zeros_like(data)
+        xce = np.zeros_like(data)
+        yce = np.zeros_like(data)
+        
+        for i in range(nrows):
+            xc[:,i] = x
+            xce[:,i] = xe
+            
+        for i in range(ncols):
+            yc[i,:] = y
+            yce[i,:] = ye        
         
         #load the data
         datagis = loadgis(pathdata, name_crater_txt)
@@ -540,8 +522,8 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         
         # because yllcorner is from the top left now
         #__, ncentery_old = wk.find_nearest(yllcorner+ye,ycrater[indf]) #correspond to rows and y
-        ncenterx_old = nrows/2
-        ncentery_old = nrows/2
+        #ncenterx_old = nrows/2
+        #ncentery_old = nrows/2
         
         #fit a circle
         xnewcenter, ynewcenter, rnew, residu = wk.leastsq_circle(x_not_outliers,y_not_outliers)
@@ -1040,9 +1022,13 @@ def mergedata(path,pathdata,filenamecrater):
 #pathplot = 'D:/ANALYSIS/SIMPLECRATERS_MOON/may_2019/double_detrending/plots/'
 #pathdata = 'D:/ANALYSIS/SIMPLECRATERS_MOON/may_2019/double_detrending/data/'
 
-path = 'D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/ASCII/'
-pathplot = 'D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/double_detrending/plots/'
-pathdata = 'D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/double_detrending/data/'
+#path = 'D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/ASCII/'
+#pathplot = 'D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/double_detrending/plots/'
+#pathdata = 'D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/double_detrending/data/'
+
+path = 'D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/ascii/'
+pathplot = 'D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/double_detrending/plots/'
+pathdata = 'D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/double_detrending/data/'
 
 # Location + cratername
 filenameXY = 'data.txt'
