@@ -1239,6 +1239,7 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
     depth = np.zeros(len(idx_circle2))
     crdl = np.zeros(len(idx_circle2))
     frdl = np.zeros(len(idx_circle2))
+    hr = np.zeros(len(idx_circle2))
     
     #zall = np.zeros((num,len(idx_circle2)))
     #distall= np.zeros((num,len(idx_circle2)))
@@ -1447,7 +1448,22 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
     
         #average rim height
         h[idt] = zi[idxF]
+
+        '''
+        **************************************************************************
+        '''        
         
+        interval_hr = zi[idxF:idxH] 
+        
+        # minimum values beyond the rim of the crater
+        min_h = np.nanmin(interval_hr)
+        
+        # height from the rim to the smallest elevation beyond the rim of the  crater 
+        hr[idt] = zi[idxF] - min_h
+        
+        '''
+        **************************************************************************
+        '''        
         # calculate the depth (new way where the min along each cross section is taken)
         depth_tmp = np.min(zi)
         depth[idt] = depth_tmp
@@ -1527,7 +1543,7 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
         
         
     return (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs, crdl, frdl,
-            h, depth, diamd, len(idx_circle2), prof_uni_detected, crossSections, YSections, XSections)
+            h, hr, depth, diamd, len(idx_circle2), prof_uni_detected, crossSections, YSections, XSections)
 
 
 

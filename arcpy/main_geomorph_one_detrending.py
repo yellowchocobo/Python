@@ -566,7 +566,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             
             #need to put some indices there (maybe, they will have different sizes)
             (R_upcw, R_ufrc, cse, slope_mcw, slope_ucw, slope_fsa, slope_lrs, slope_urs,  crdl, frdl,
-            h, depth, diam, nnn, prf, crossSections, YSections, XSections) = (wk.calculation(xc, yc, x_not_outliers, 
+            h, hr, depth, diam, nnn, prf, crossSections, YSections, XSections) = (wk.calculation(xc, yc, x_not_outliers, 
                               y_not_outliers, z_not_outliers, prof_not_outliers,
                 rnew, ndata, cellsize, ncenterx, ncentery, xllcorner, yllcorner))
             
@@ -606,6 +606,13 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             h_75[indf] = np.nanpercentile(h,75)
             h_min[indf] = np.nanmin(h)
             h_max[indf] = np.nanmax(h)
+            
+            unc_hr[indf] = np.nanstd(hr)/np.sqrt(nnn)
+            med_hr[indf] = np.nanmedian(hr)
+            hr_25[indf] = np.nanpercentile(hr,25)
+            hr_75[indf] = np.nanpercentile(hr,75)
+            hr_min[indf] = np.nanmin(hr)
+            hr_max[indf] = np.nanmax(hr)
         
             depthf[indf] = np.nanstd(depth)/np.sqrt(nnn)
             med_depth[indf] = np.nanmedian(depth)
@@ -675,6 +682,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             header_txt = ('mdiam;udiam;diam25;diam75;diam_min;diam_max;' + 
                           'mdepth;udepth;depth25;depth75;depth_min;depth_max;' + 
                           'mh;uh;h25;h75;hmin;hmax;' +
+                          'mhr;uhr;hr25;hr75;hrmin;hrmax;' +
                           'm_mcw;u_mcw;mcw_25;mcw_75;mcw_min;mcw_max;' +
                           'm_ucw;u_ucw;ucw_25;ucw_75;ucw_min;ucw_max;' +
                           'mcse;ucse;cse_25;cse_75;cse_min;cse_max;'
@@ -714,6 +722,13 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             h_75[indf] = np.nan
             h_min[indf] = np.nan
             h_max[indf] = np.nan
+            
+            unc_hr[indf] = np.nan
+            med_hr[indf] = np.nan
+            hr_25[indf] = np.nan
+            hr_75[indf] = np.nan
+            hr_min[indf] = np.nan
+            hr_max[indf] = np.nan
             
             depthf[indf] = np.nan
             med_depth[indf] = np.nan
@@ -782,6 +797,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
             header_txt = ('mdiam;udiam;diam25;diam75;diam_min;diam_max;' + 
                           'mdepth;udepth;depth25;depth75;depth_min;depth_max;' + 
                           'mh;uh;h25;h75;hmin;hmax;' +
+                          'mhr;uhr;hr25;hr75;hrmin;hrmax;' +
                           'm_mcw;u_mcw;mcw_25;mcw_75;mcw_min;mcw_max;' +
                           'm_ucw;u_ucw;ucw_25;ucw_75;ucw_min;ucw_max;' +
                           'mcse;ucse;cse_25;cse_75;cse_min;cse_max;'
@@ -801,6 +817,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         arc = np.column_stack((med_diam[indf], diamf[indf], diam_25[indf], diam_75[indf], diam_min[indf], diam_max[indf],
                                med_depth[indf], depthf[indf], depth_25[indf], depth_75[indf], depth_min[indf], depth_max[indf],
                                med_h[indf], unc_h[indf], h_25[indf], h_75[indf], h_min[indf], h_max[indf], 
+                               med_hr[indf], unc_hr[indf], hr_25[indf], hr_75[indf], hr_min[indf], hr_max[indf],
                                med_mcw[indf], unc_mcw[indf], mcw_25[indf], mcw_75[indf], mcw_min[indf], mcw_max[indf],
                                med_ucw[indf], unc_ucw[indf], ucw_25[indf], ucw_75[indf], ucw_min[indf], ucw_max[indf],
                                med_cse[indf], unc_cse[indf], cse_25[indf], cse_75[indf], cse_min[indf], cse_max[indf],
@@ -855,6 +872,7 @@ def run2(path, filenameXY, filenamecrater, pathdata):
     return (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             med_depth, depthf, depth_25, depth_75, depth_min, depth_max, 
             med_h, unc_h, h_25, h_75, h_min, h_max,
+            med_hr, unc_hr, hr_25, hr_75, hr_min, hr_max,
             med_mcw, unc_mcw, mcw_25, mcw_75, mcw_min, mcw_max,
             med_ucw, unc_ucw, ucw_25, ucw_75, ucw_min, ucw_max,
             med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max,
@@ -911,7 +929,14 @@ def mergedata(path,pathdata,filenamecrater):
     h_25  = np.ones(len(crater_id))
     h_75 = np.ones(len(crater_id))
     h_min  = np.ones(len(crater_id))
-    h_max  = np.ones(len(crater_id))    
+    h_max  = np.ones(len(crater_id))
+
+    unc_hr = np.ones(len(crater_id))
+    med_hr = np.ones(len(crater_id))
+    hr_25  = np.ones(len(crater_id))
+    hr_75 = np.ones(len(crater_id))
+    hr_min  = np.ones(len(crater_id))
+    hr_max  = np.ones(len(crater_id))      
     
     med_depth = np.ones(len(crater_id))
     depthf = np.ones(len(crater_id))
@@ -983,6 +1008,7 @@ def mergedata(path,pathdata,filenamecrater):
         (med_diam[indf], diamf[indf], diam_25[indf], diam_75[indf], diam_min[indf], diam_max[indf], 
          med_depth[indf], depthf[indf], depth_25[indf], depth_75[indf], depth_min[indf], depth_max[indf], 
          med_h[indf], unc_h[indf], h_25[indf], h_75[indf], h_min[indf], h_max[indf],
+         med_hr[indf], unc_hr[indf], hr_25[indf], hr_75[indf], hr_min[indf], hr_max[indf],
          med_mcw[indf], unc_mcw[indf], mcw_25[indf], mcw_75[indf], mcw_min[indf], mcw_max[indf],
          med_ucw[indf], unc_ucw[indf], ucw_25[indf], ucw_75[indf], ucw_min[indf], ucw_max[indf],
          med_cse[indf], unc_cse[indf], cse_25[indf], cse_75[indf], cse_min[indf], cse_max[indf],
@@ -997,6 +1023,7 @@ def mergedata(path,pathdata,filenamecrater):
     return (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             med_depth, depthf, depth_25, depth_75, depth_min, depth_max, 
             med_h, unc_h, h_25, h_75, h_min, h_max,
+            med_hr, unc_hr, hr_25, hr_75, hr_min, hr_max,
             med_mcw, unc_mcw, mcw_25, mcw_75, mcw_min, mcw_max,
             med_ucw, unc_ucw, ucw_25, ucw_75, ucw_min, ucw_max,
             med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max,
@@ -1045,6 +1072,7 @@ run1(path, filenameXY, filenamecrater, pathplot, pathdata)
 (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             med_depth, depthf, depth_25, depth_75, depth_min, depth_max, 
             med_h, unc_h, h_25, h_75, h_min, h_max,
+            med_hr, unc_hr, hr_25, hr_75, hr_min, hr_max,
             med_mcw, unc_mcw, mcw_25, mcw_75, mcw_min, mcw_max,
             med_ucw, unc_ucw, ucw_25, ucw_75, ucw_min, ucw_max,
             med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max,
@@ -1062,6 +1090,7 @@ run1(path, filenameXY, filenamecrater, pathplot, pathdata)
 (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             med_depth, depthf, depth_25, depth_75, depth_min, depth_max, 
             med_h, unc_h, h_25, h_75, h_min, h_max,
+            med_hr, unc_hr, hr_25, hr_75, hr_min, hr_max,
             med_mcw, unc_mcw, mcw_25, mcw_75, mcw_min, mcw_max,
             med_ucw, unc_ucw, ucw_25, ucw_75, ucw_min, ucw_max,
             med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max,
@@ -1081,6 +1110,7 @@ run1(path, filenameXY, filenamecrater, pathplot, pathdata)
 header_txt = ('mdiam;udiam;diam25;diam75;diam_min;diam_max;' + 
                           'mdepth;udepth;depth25;depth75;depth_min;depth_max;' + 
                           'mh;uh;h25;h75;hmin;hmax;' +
+                          'mhr;uhr;hr25;hr75;hrmin;hrmax;' +
                           'm_mcw;u_mcw;mcw_25;mcw_75;mcw_min;mcw_max;' +
                           'm_ucw;u_ucw;ucw_25;ucw_75;ucw_min;ucw_max;' +
                           'mcse;ucse;cse_25;cse_75;cse_min;cse_max;dD;'
@@ -1102,6 +1132,7 @@ name_crater_f = 'final_res1D.txt'
 arc = np.column_stack((med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             med_depth, depthf, depth_25, depth_75, depth_min, depth_max,  
             med_h, unc_h, h_25, h_75, h_min, h_max,
+            med_hr, unc_hr, hr_25, hr_75, hr_min, hr_max,
             med_mcw, unc_mcw, mcw_25, mcw_75, mcw_min, mcw_max,
             med_ucw, unc_ucw, ucw_25, ucw_75, ucw_min, ucw_max,
             med_cse, unc_cse, cse_25, cse_75, cse_min, cse_max, dD,
