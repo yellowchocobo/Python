@@ -29,7 +29,7 @@ arcpy.CheckOutExtension("Spatial")
 
 pathdab = r"D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/layers/database.gdb/"
 
-outASCII = "D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/ascii/" #"D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya/ASCII/" # change
+outASCII = "D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/ascii4R/" #"D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya/ASCII/" # change
 
 # define paths and workspace (I need to create the gdb at some points)
 env.workspace = env.scratchWorkspace = pathdab
@@ -228,7 +228,7 @@ with arcpy.da.UpdateCursor(infile, ["Diam_km", "CRATER_ID", "x_coord", "y_coord"
     ix = 0
     for row in cursor:
         a = 'crater' + str(int(ix)).zfill(4)
-        buffer_value = np.round((row[0]/2.) * 8.0, decimals=4) # changed to 8
+        buffer_value = np.round((row[0]/2.) * 4.0, decimals=4) # changed to 8
         b = str(buffer_value) + ' Kilometers'
         row[1] = a
         #row[1] = crater_id[ix]

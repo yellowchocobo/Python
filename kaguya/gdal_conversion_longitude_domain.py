@@ -11,11 +11,11 @@ import subprocess
 '''
 **************************************************************************************************
 '''
-def convert_sc360_to_sc180(ulx_scy_360, lrx_scy_360, cellsize = 7.403161724669900):
+def convert_sc360_to_sc180(ulx_scy_360, lrx_scy_360, cols, cellsize = 7.403161724669900):
     
-    ulx_degree = ulx_scy_360 / (4096*cellsize)
+    ulx_degree = ulx_scy_360 / (cols*cellsize)
     
-    lrx_degree = lrx_scy_360 / (4096*cellsize)
+    lrx_degree = lrx_scy_360 / (cols*cellsize)
     
     if ulx_degree >= 180.0:
         ulx_degree_180 = -(360.0 - ulx_degree)
@@ -27,9 +27,9 @@ def convert_sc360_to_sc180(ulx_scy_360, lrx_scy_360, cellsize = 7.40316172466990
     else:
         lrx_degree_180 = lrx_degree
         
-    ulx_sc180 = ulx_degree_180 * (4096*cellsize)
+    ulx_sc180 = ulx_degree_180 * (cols*cellsize)
     
-    lrx_sc180 = lrx_degree_180 * (4096*cellsize)
+    lrx_sc180 = lrx_degree_180 * (cols*cellsize)
     
     return (ulx_sc180, lrx_sc180)
     
@@ -47,8 +47,14 @@ def getExtentRasters(path_raster, list_tif):
     for raster in list_tif:
         
         print (raster)
+        
+        # 
+        nname_tif = raster.split(".img")[0] + ".tif" #+ "_fix.tif"
+        nname_lbl = raster.split(".img")[0] + ".lbl" #+ "_fix.tif"
+        
+        translate([path_raster + nname_lbl, path_raster + nname_tif])
     
-        ds=gdal.Open(raster)
+        ds=gdal.Open(nname_tif)
     
         gt=ds.GetGeoTransform()
         cols = ds.RasterXSize
@@ -60,11 +66,15 @@ def getExtentRasters(path_raster, list_tif):
         lrx = ext[2][0]
         lry = ext[2][1]
     
-        (ulx_sc180, lrx_sc180) = convert_sc360_to_sc180(ulx, lrx, cellsize = 7.403161724669900)
+        (ulx_sc180, lrx_sc180) = convert_sc360_to_sc180(ulx, lrx, cols, cellsize = 7.403161724669900)
         
-        nname = raster.split(".tif")[0] + "_fix.tif"
+        nname_fix_tif = raster.split(".img")[0] + "_fix.tif" 
         
-        translate(['-a_ullr', str(ulx_sc180), str(uly), str(lrx_sc180), str(lry), path_raster + raster, path_raster + nname])
+        translate(['-a_ullr', str(ulx_sc180), str(uly), str(lrx_sc180), str(lry), path_raster + nname_tif, path_raster + nname_fix_tif])
+        
+        # remove the two other files
+        os.remove(path_raster + raster)
+        os.remove(path_raster + nname_tif)
         
 '''
 **************************************************************************************************
@@ -127,10 +137,10 @@ def GetExtent(gt,cols,rows):
 '''
 **************************************************************************************************
 '''
-path_raster = '/run/media/nilscp/pampa/Kaguya/SLDEM2013/'
+path_raster = '/run/media/nilscp/Squall/Kaguya/ORTHOIMAGES/'
 
 os.chdir(path_raster)
 
-list_tif = glob.glob("*.tif")
+list_tif = glob.glob("*.img")
 
 getExtentRasters(path_raster, list_tif)
