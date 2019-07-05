@@ -217,6 +217,10 @@ def detrending(xc, yc, radius, cellsize, ncenterx, ncentery, data, stduse):
     # these correspond to all coordinates between 2R and 3R                
     xfcoord = np.array(xfcoord)
     yfcoord = np.array(yfcoord)
+    
+    #just to be sure
+    #xfcoord = np.int(xfcoord) # added 11.06.2019
+    #yfcoord = np.int(yfcoord) # added 11.06.2019
 
     '''
     **************************
@@ -1456,10 +1460,15 @@ def calculation(xc, yc, x_not_outliers, y_not_outliers, z_not_outliers, prof_not
         interval_hr = zi[idxF:idxH] 
         
         # minimum values beyond the rim of the crater
-        min_h = np.nanmin(interval_hr)
         
-        # height from the rim to the smallest elevation beyond the rim of the  crater 
-        hr[idt] = zi[idxF] - min_h
+        try:
+            min_h = np.nanmin(interval_hr)
+            
+            # height from the rim to the smallest elevation beyond the rim of the  crater 
+            hr[idt] = zi[idxF] - min_h
+            
+        except:
+            hr[idt] = np.nan
         
         '''
         **************************************************************************

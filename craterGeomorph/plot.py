@@ -38,6 +38,7 @@ from pylab import arange
 from matplotlib import rc
 import matplotlib.gridspec as gridspec
 import copy
+import glob
 
 
 pathm = ['/work/nilscp/Python/prog/clean', '/work/nilscp/iSALE/Dellen/lib']
@@ -72,10 +73,10 @@ def make_video(path, delay_number, loop_number, videolabel):
     videoname = 'myvideo.gif'  
 
     example:
-    path = '/work/nilscp/iSALE/isaleruns/velocity/ndata/C00P10F06LONG_L800/evolution/plots/Porosity/'
+    path = '/run/media/nilscp/Squall/benchmarkFI/CPPR10/data/CDILWPO_L100/evolution/plots/Distension/all/'
     delay_number = 10
     loop_number = 1
-    videoname = 'porosity'
+    videoname = 'distension'
     make_video(path, delay_number, loop_number, videoname)
     '''
     os.chdir(path)
@@ -88,7 +89,7 @@ def make_video(path, delay_number, loop_number, videolabel):
 
     subprocess.Popen(command.split(), cwd=path)
 
-    print 'Steven Spielberg'
+    print ('Steven Spielberg')
 
 
 '''
@@ -416,55 +417,99 @@ def morphology(path1, paths, norm, normpath, timei, showtransient, showhline, lb
 '''
 
 
-def zoom(zoom_id, norm, mod, rrim):
+def zoom(zoom_id, norm, mod, rrim, manualx, manualy):
     '''
     example:
     zoom_id = 'hires' # 'close'; 'mid', 'hires'; 'all'
     norm = 2
     rrim = rinner1
-
-    extentx, extenty = zoom(zoom_id, norm, mod1, rrim)
+    manualx = ((0,1500.)) # if norm not equal to 0 then it has to be in normalized distance!
+    manualy = ((-1000., 500.)) # if norm not equal to 0 then it has to be in normalized distance!
+    extentx, extenty = zoom(zoom_id, norm, mod1, rrim, manualx, manualy)
+    
+    added manual opportunity?
+    
+    if manual_entry
     '''
+    
+    # create empty arrays
+    extentx = []
+    extenty = []
 
-    zid = np.array(['close', 'mid', 'hires', 'all'])
+    zid = np.array(['close', 'mid', 'hires', 'all', 'manual'])
+    
+    
+    for z in zoom_id:
 
-    idx = np.where(zid == zoom_id)[0][0]
-
-    if norm == 0:
-        if idx == 0:
-            extentx = [0.0, 1.2*rrim]
-            extenty = [-0.8*rrim, 0.8*rrim]
-
-        elif idx == 1:
-            extentx = [0.0, 2.0*rrim]
-            extenty = [-2.0*rrim, 0.8*rrim]
-
-        elif idx == 2:
-            extentx = [0.0, mod.xhires[1]]
-            extenty = mod.yhires
-
+        idx = np.where(zid == z)[0][0]
+    
+        if norm == 0:
+            if idx == 0:
+                extentx.append((0.0, 1.2*rrim))
+                extenty.append((-0.8*rrim, 0.8*rrim))
+    
+            elif idx == 1:
+                extentx.append((0.0, 2.0*rrim))
+                extenty.append((-2.0*rrim, 0.8*rrim))
+    
+            elif idx == 2:
+                extentx.append((0.0, mod.xhires[1]))
+                extenty.append((mod.yhires[0], mod.yhires[1]))
+                
+            elif idx == 4:
+                extentx.append(manualx)
+                extenty.append(manualy)
+    
+            else:
+                extentx.append((0.0, np.max(mod.xc)))
+                extenty.append((np.min(mod.yc), np.max(mod.yc)))
+    
         else:
-            extentx = [0.0, np.max(mod.xc)]
-            extenty = [np.min(mod.yc), np.max(mod.yc)]
-
+            if idx == 0:
+                extentx.append((0.0, 1.2))
+                extenty.append((-0.8, 0.8))
+    
+            elif idx == 1:
+                extentx.append((0.0, 2.0))
+                extenty.append((-2.0, 0.8))
+    
+            elif idx == 2:
+                extentx.append((0.0, mod.xhires[1]/rrim))
+                extenty.append((mod.yhires[0]/rrim, mod.yhires[1]/rrim))
+                
+            elif idx == 4:
+                extentx.append(manualx)
+                extenty.append(manualy)
+    
+            else:
+                extentx.append((0.0, np.max(mod.xc)/rrim))
+                extenty.append((np.min(mod.yc)/rrim, np.max(mod.yc)/rrim))
+        
+    ix_to_delete = []        
+    for iy, y in enumerate(extenty):
+        if np.isnan(extenty[iy][1]):
+            ix_to_delete.append(iy)
+                
+    if len(ix_to_delete) > 0:
+        zoom_id_up = np.delete(zoom_id, ix_to_delete)
+            
+        bb = np.array(range(len(zoom_id)))
+        aa = np.array(ix_to_delete)
+        cc = np.setdiff1d(bb,aa)
+            
+        extentxup = []
+        extentyup = []
+            
+        for c in cc:
+            extentxup.append(extentx[c])
+            extentyup.append(extenty[c])
+                
     else:
-        if idx == 0:
-            extentx = [0.0, 1.2]
-            extenty = [-0.8, 0.8]
-
-        elif idx == 1:
-            extentx = [0.0, 2.0]
-            extenty = [-2.0, 0.8]
-
-        elif idx == 2:
-            extentx = [0.0, mod.xhires[1]/rrim]
-            extenty = mod.yhires/rrim
-
-        else:
-            extentx = [0.0, np.max(mod.xc)/rrim]
-            extenty = [np.min(mod.yc)/rrim, np.max(mod.yc)/rrim]
-
-    return extentx, extenty
+        extentxup = extentx
+        extentyup = extenty
+        zoom_id_up = zoom_id
+            
+    return extentxup, extentyup, zoom_id_up
 
 
 '''
@@ -472,73 +517,222 @@ def zoom(zoom_id, norm, mod, rrim):
 '''
 
 
-def field_definition(param, paths):
+def field_definition(model, zoom_id, paths, param = 'all'):
     '''
     example:
     param = 'Por'
-    paths = '/work/nilscp/iSALE/isaleruns/velocity/ndata/C00P10F06LONG_L800/'
+    paths = '/run/media/nilscp/Squall/benchmarkFI/CPPR10/data/CDILWPO_L100/'
+    zoom_id = ['mid', 'hires']
 
-    fld_param, fld_name, fld_cmap, fld_unit, fld_factor, npath = field_definition(param, paths)
+    fld_param, fld_name, fld_cmap, fld_unit, fld_factor, npath = field_definition(model, zoom_id, paths, param = 'all')
+    
+    #Updated field_definition the 24th June 2019
+    
     '''
 
-    fld = np.array(['Den', 'Tmp', 'Pre', 'Sie', 'Yld',
-                    'Dam', 'Alp', 'Por', 'TPS', 'YAc'])
+    fld = np.array(['Cm1', 'Cm2', 'Den', 'Tmp', 'Pre', 'Sie', 'Yld',
+                    'Dam', 'Alp', 'TPS', 'YAc'])
 
-    fld_param = np.array(['Den', 'Tmp', 'Pre', 'Sie', 'Yld',
-                          'Dam', 'Alp', 'Alp', 'TPS', 'YAc'])
+    fld_param = np.array(['Cm1', 'Cm2', 'Den', 'Tmp', 'Pre', 'Sie', 'Yld',
+                          'Dam', 'Alp', 'TPS', 'YAc'])
 
-    fld_name = np.array(['Density', 'Temperature', 'Pressure', 'Specific internal energy',
-                         'Yield strength', 'Damage', 'Distension', 'Porosity', 'Total plastic strain',
-                         'Acoustic fluidisation strength'])
+    fld_name = np.array(['material 1', 'material 2', 'density', 'temperature', 'pressure', 'sie',
+                         'YS', 'damage', 'distension', 'TPS',
+                         'YAc'])
 
-    fld_folder = np.array(['Density', 'Temperature', 'Pressure', 'Specific_internal_energy',
-                           'Yield_strength', 'Damage', 'Distension', 'Porosity', 'Total_plastic_strain',
+    fld_folder = np.array(['Cm1', 'Cm2', 'Density', 'Temperature', 'Pressure', 'Specific_internal_energy',
+                           'Yield_strength', 'Damage', 'Distension', 'Total_plastic_strain',
                            'Acoustic_fluidisation_strength'])
 
-    fld_cmap = np.array(['viridis', 'seismic', 'autumn', 'bwr',
-                         'autumn', 'RdPu', 'gray_r', 'gray_r', 'Reds_r',
-                         'autumn'])
+    fld_cmap = np.array(['BrBG_r', 'BrBG_r', 'viridis', 'autumn', 'bwr', 'bwr',
+                         'summer', 'winter', 'gray_r', 'Reds_r',
+                         'summer'])
 
-    fld_unit = np.array(['kg/m^{3}', 'Kelvin', 'GPa', 'J',
-                         'GPa', 'Damage', 'Distention', 'Percentage', 'Strain',
-                         'GPa'])
+    fld_unit = np.array(['Conc. material','Conc. material','kg/m^{3}', 'Kelvin', 'GPa', 'MJ',
+                         'GPa', 'Damage', 'Distention', 'Strain',
+                         'MPa'])
 
-    fld_factor = np.array([1., 1., 1e9, 1., 1e9, 1., 1., 1., 1., 1e9])
+    fld_factor = np.array([1., 1., 1., 1., 1e9, 1e6, 1e9, 1., 1., 1., 1e6])
+    
+    
+    # In case for all the parameters 
+    if param == 'all':
+        
+        # get all the field available for the model
+        iSALEparam0 = model.fieldlist
+        iSALEparam = []
+    
+        for param in iSALEparam0:
+            if ((param[0].startswith('V_')) | (param[0].startswith('Tr'))):
+                None
+            else:
+                iSALEparam.append(param[0])
+                
+        # get the lists
+        param1 = []
+        name = []
+        cmap = []
+        unit = []
+        factor = []
+        npathl = []
+        
+        for parami in iSALEparam:
+            
+            idx = np.where(fld == parami)[0][0]
+        
+            param1.append(fld_param[idx])
+            name.append(fld_name[idx])
+            cmap.append(fld_cmap[idx])
+            unit.append(fld_unit[idx])
+            factor.append(fld_factor[idx])
+            
+            
+            for z in zoom_id:
+                npath = paths + 'evolution/plots/' + fld_folder[idx] + '/' + z + '/'
+                npathl.append(npath)
+                
+                if not os.path.exists(npath):
+                    os.makedirs(npath)
+                    
+    
+    else:
+        idx = np.where(fld == param)[0][0]
+    
+        param1 = fld_param[idx]
+        name = fld_name[idx]
+        cmap = fld_cmap[idx]
+        unit = fld_unit[idx]
+        factor = fld_factor[idx]
+        npathl = []
+        
+        for z in zoom_id:
+            npath = paths + 'evolution/plots/' + fld_folder[idx] + '/' + z + '/'
+            npathl.append(npath)
+            
+            if not os.path.exists(npath):
+                os.makedirs(npath)
 
-    idx = np.where(fld == param)[0][0]
-
-    param1 = fld_param[idx]
-    name = fld_name[idx]
-    cmap = fld_cmap[idx]
-    unit = fld_unit[idx]
-    factor = fld_factor[idx]
-    npath = paths + 'evolution/plots/' + fld_folder[idx] + '/'
-
-    if not os.path.exists(npath):
-        os.makedirs(npath)
-
-    return param1, name, cmap, unit, factor, npath
+    return param1, name, cmap, unit, factor, npathl
 
 
 '''
 ***********************************************************************
 '''
 
-
-def field(param, path1, paths, norm, normpath, zoom_id, vmiin, vmaax, lbl):
+def truncate(n, decimals=0):
+    
     '''
-    param = 'Por'  
-    path1 = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/layering/AUG/collapse/results/C00P10F06LONG_L800/'
-    paths = '/work/nilscp/iSALE/isaleruns/velocity/ndata/C00P10F06LONG_L800/'
-    normpath = '/work/nilscp/iSALE/isaleruns/velocity/ndata/C00P10F06LONG_L800/'
-    norm = 1
-    zoom_id = 'all' # 'mid'; 'hires'; 'all' #depending on the zoom
-    vmiin = 0.
-    vmaax = 20.
+    see website: https://realpython.com/python-rounding/
+    
+    >>> truncate(-5.963, 1)
+    -5.9
+    
+    
+    >>> truncate(-1374.25, -3)
+    -1000.0
+    '''
+    
+    multiplier = 10 ** float(decimals)
+    return int(n * multiplier) / multiplier
 
-    lbl = r"$\mathit{L} = 800 m"
+'''
+***********************************************************************
+'''
 
-    field(param, path1, paths, norm, normpath, zoom_id, vmiin, vmaax, lbl)
+def vmin_vmax(path1, mod1, fld_param, fld_factor, param):
+    
+    '''
+    Problem with the total plastic strain and the acoustic fluidization strength
+    
+    '''
+    
+    
+    # change to directory
+    os.chdir(path1)
+    
+    # empty list
+    vminlst = []
+    vmaxlst = []
+        
+    # read step only one time
+    step = mod1.readStep(fld_param, 1)
+    
+    
+    for ifld, fld in enumerate(fld_param):
+        
+        if fld.startswith('Cm'):       
+            vminlst.append(0.0)
+            vmaxlst.append(1.0)
+            
+        elif fld.startswith('Al'):
+            vminlst.append(1.00)
+            vmaxlst.append(1.25)
+            
+        elif fld.startswith('Da'):
+            vminlst.append(0.0)
+            vmaxlst.append(1.0)
+            
+        elif fld.startswith('TP'):
+            vminlst.append(1e-5)
+            vmaxlst.append(1.0)
+            
+        elif fld.startswith('Pr'):
+            vminlst.append(0.0)
+            vmaxlst.append(1.0)
+            
+        elif fld.startswith('Yl'):
+            vminlst.append(0.0)
+            vmaxlst.append(1.0) 
+        else:
+            
+            # could I automatically find vmiin and vmaax
+            ixfld = np.where(step.cmc[0] >= 0.5) # at least contain 50% of material
+            
+            # automatically find vmin and vmax
+            vminlst.append(0.0)
+            vmaax = np.percentile(step.data[ifld][ixfld]/fld_factor[ifld], 70)
+            
+            
+            # rounding 
+            if vmaax >= 1000.:
+                vmaaxg = truncate(vmaax, -2)
+            elif ((vmaax >= 10.) & (vmaax < 1000.)):
+                vmaaxg = truncate(vmaax, -1)
+            elif ((vmaax >= 0.1) & (vmaax < 10.)):
+                vmaaxg = truncate(vmaax, 1)
+            else:
+                vmaaxg = truncate(vmaax, 3)
+            
+            # if somehow the rounding does not work then just use 1
+            if vmaaxg == 0.0:
+                vmaxlst.append(1.0)
+            else:
+                vmaxlst.append(vmaaxg)
+            
+    return (vminlst, vmaxlst)
+    
+'''
+***********************************************************************
+'''
+
+
+def field(path1, paths, norm, normpath, zoom_id, lbl, vmiin, vmaax, manualx, manualy, param = 'all'):
+    '''
+    param = 'Den'  
+    path1 = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/benchmarkFI/CPPR/UAVG/CPPR10/CDILWPO/CDILWPO_L100_dev_larger_cells/'
+    paths = '/run/media/nilscp/Squall/benchmarkFI/CPPR10/data/CDILWPO_L100_dev_larger_cells/'
+    normpath = '/run/media/nilscp/Squall/benchmarkFI/CPPR10/data/CDILWPO_L100/'
+    norm = 0
+    zoom_id = ['close', 'mid', 'hires', 'all', 'manual'] # 'mid'; 'hires'; 'all' #depending on the zoom
+    param = 'all'
+    vmiin = [] # or vmiin = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1e-5, 0.0] # need to take into account the field factor
+    vmaax = [] # or vmaax = [1.0, 1.0, 2000.0, 400.0, 1.0, 1.0, 1.0, 1.0, 1.25,1.0, 1.0]
+
+    lbl = r"$\mathit{L} = 100 m"
+
+    field(path1, paths, norm, normpath, zoom_id, lbl, vmiin, vmaax, param)
+    
+    I should replace vmiin and vmaax by percentile values that are rounded to the hundreds
 
 
     Field list:
@@ -566,13 +760,6 @@ def field(param, path1, paths, norm, normpath, zoom_id, vmiin, vmaax, lbl):
     os.chdir(path1)
     mod1 = psp.opendatfile('jdata.dat')
 
-    # field list (should I make a function out of it?)
-    fld_param, fld_name, fld_cmap, fld_unit, fld_factor, npath = field_definition(
-        param, paths)
-
-    # update label
-    lbl = lbl + ", " + fld_name + "$"
-
     # modelname
     modelname = path1.split('/')[-2]
 
@@ -587,7 +774,8 @@ def field(param, path1, paths, norm, normpath, zoom_id, vmiin, vmaax, lbl):
 
         os.chdir(paths + 'final/')
         t_f, __, __, __, __, drim_f, __ = np.loadtxt(
-            modelname + '_final.txt', delimiter='\t', comments='#')
+            modelname + '_final040.txt', delimiter='\t', comments='#') # put to 040 here
+        
         rinner1 = drim_f/2.
 
     elif norm == 2:
@@ -604,10 +792,13 @@ def field(param, path1, paths, norm, normpath, zoom_id, vmiin, vmaax, lbl):
         # load data for the transient crater modtr
         t_tr1, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __ = np.loadtxt(
             modelnametr + '_tr.txt', delimiter='\t', comments='#')
-
+        
+        # is it normal that it only load the data for the norm path?
+        # maybe I guess so
         os.chdir(normpath + 'final/')
         t_fnorm, __, __, __, __, drim_fnorm, __ = np.loadtxt(
-            modelnametr + '_final.txt', delimiter='\t', comments='#')
+            modelnametr + '_final040.txt', delimiter='\t', comments='#') # put to 040 here
+        
         rinner1 = drim_fnorm/2.
 
     else:
@@ -619,104 +810,196 @@ def field(param, path1, paths, norm, normpath, zoom_id, vmiin, vmaax, lbl):
 
         os.chdir(paths + 'final/')
         t_f, __, __, __, __, drim_f, __ = np.loadtxt(
-            modelname + '_final.txt', delimiter='\t', comments='#')
+            modelname + '_final040.txt', delimiter='\t', comments='#') # put to 040 here
+            
+        rinner1 = drim_f/2.
 
     ###########################################################################
+    
+    try:
+        # choosing the degree of the zooming on the figure
+        # get the extent
+        extentx, extenty, zoom_id_up = zoom(zoom_id, norm, mod1, rinner1, manualx, manualy)
+        
+        # field list (should I make a function out of it?)
+        fld_param, fld_name, fld_cmap, fld_unit, fld_factor, npath = field_definition(mod1, zoom_id_up, paths, param)
 
-    # choosing the degree of the zooming on the figure
-    # get the extent
-    extentx, extenty = zoom(zoom_id, norm, mod1, rinner1)
+        # update label
+        nlbl = []
+        
+        # small change (for case with only one selected parameter)
+        if param != 'all':
+            nlbl.append(lbl + ", " + fld_name + "$")
+            fld_param = [fld_param]
+            fld_factor = [fld_factor]
+            fld_name = [fld_name]
+            fld_cmap = [fld_cmap]
+            fld_unit = [fld_unit]
+        else:        
+            for fname in fld_name:
+                nlbl.append(lbl + ", " + fname + "$")
+        
+        # print fld_param
+        print fld_param
 
-    # looping of
-    os.chdir(path1)
-    for i in range(mod1.nsteps):
-        step = mod1.readStep(fld_param.data[:], i)
 
-        t1 = step.time
-        # plotting of the data
-        fig = plt.figure(figsize=(6, 6))
-        ax1 = fig.add_subplot(111)
+        
 
-        # changing the vmin and vmax every step will change the value everytime
-        # maybe I should define manually
-        if norm >= 1:
-            if param == 'Por':
-                cax = ax1.pcolormesh(mod1.x/rinner1, mod1.y/rinner1, (1. - (1./step.data[0]))*100.,
-                                     vmin=vmiin,
-                                     vmax=vmaax,
-                                     cmap=fld_cmap, zorder=2)
+        
+        #vmin and vmax (update here)
+        if len(vmiin) == 0:
+            vmiin, vmaax = vmin_vmax(path1, mod1, fld_param, fld_factor, param)
+        else:
+            None
+    
+        # looping of
+        os.chdir(path1)
+        for i in range(mod1.nsteps):
+            step = mod1.readStep(fld_param, i)
+    
+            t1 = step.time
+            # plotting of the data
+    
+            # changing the vmin and vmax every step will change the value everytime
+            # maybe I should define manually
+            
+            if norm >= 1:
+                
+                '''
+                After the change including all parameters this statement will never
+                be fullfill expect when param = 'Por'
+                '''
+                
+                # don't like the 'Por' thing
+                #if param == 'Por':
+                #    cax = ax1.pcolormesh(mod1.x/rinner1, mod1.y/rinner1, (1. - (1./step.data[0]))*100.,
+                #                         vmin=vmiin,
+                #                         vmax=vmaax,
+                #                         cmap=fld_cmap, zorder=2)
+                
+                count = 0
+                
+                for ifld, fld in enumerate(fld_param):
+                    
+                    for iz, z in enumerate(zoom_id_up):
+                        
+                        fig = plt.figure(figsize=(6, 6))
+                        ax1 = fig.add_subplot(111)
+                        
+                        # plot data
+                        cax = ax1.pcolormesh(mod1.x/rinner1, mod1.y/rinner1, step.data[ifld]/fld_factor[ifld],
+                                                 vmin=vmiin[ifld],
+                                                 vmax=vmaax[ifld],
+                                                 cmap=fld_cmap[ifld], zorder=2)
+        
+                        ax1.contour(mod1.xc/rinner1, mod1.yc/rinner1,
+                                step.cmc[0], 1, colors='k', linewidths=2, zorder=4)
+                    
+                    
+        
+                        for ax in [ax1]:
+                            ax.minorticks_off()
+                            ax.tick_params('both', labelsize=16, length=10,
+                                           width=2., which='major')
+                            
+                        cbar = fig.colorbar(cax)
+                        cbar.ax.tick_params(labelsize=15)
+                        cbar.set_label('$' + fld_unit[ifld] + '$', labelpad=-
+                                       42.5, y=1.07, fontsize=15, rotation=0)
+                        
+                        # set labels
+                        ax1.set_xlabel(r"$x / R_{r}$", fontsize=20)
+                        ax1.set_ylabel(r"$y / R_{r}$", fontsize=20)
+                        
+                        # set title            
+                        ax1.set_title(r"$\mathit{t} = " + "{:.2f}".format(t1) + " " + " s, $" + " " +
+                                      "$\zeta$ = " + "{:.2f}".format(t1/t_trg), position=(0.5, 0.9), fontsize=18)
+                        
+                        # related to the zoom
+                        ax1.set_xlim(extentx[iz])
+                        for ax in [ax1]:
+                            ax.set_ylim(extenty[iz])
+                        fig.tight_layout()
+                        
+                        st = fig.suptitle(nlbl[ifld], fontsize=20)
+                        st.set_y(0.97)
+                        st.set_x(0.5)
+                        fig.subplots_adjust(top=0.9)
+                            
+                                                    
+                        if norm == 1:
+                            figtitle = 'itself_norm_' + modelname + \
+                                '_' + str(int(i)).zfill(3) + ".png"
+                            fig.savefig(npath[count] + figtitle, dpi=300)
+                            
+                        elif norm == 2:
+                            figtitle = 'norm_' + modelname + \
+                                '_' + str(int(i)).zfill(3) + ".png"
+                            fig.savefig(npath[count] + figtitle, dpi=300)
+                            
+                        plt.close()
+                        
+                        count = count + 1
+    
+    
             else:
-                cax = ax1.pcolormesh(mod1.x/rinner1, mod1.y/rinner1, step.data[0]/fld_factor,
-                                     vmin=vmiin,
-                                     vmax=vmaax,
-                                     cmap=fld_cmap, zorder=2)
-
-            ax1.contour(mod1.xc/rinner1, mod1.yc/rinner1,
-                        step.cmc[0], 1, colors='k', linewidths=2, zorder=4)
-            ax1.set_xlim([0, extentx[1]])
-
-            for ax in [ax1]:
-                ax.minorticks_off()
-                ax.tick_params('both', labelsize=16, length=10,
-                               width=2., which='major')
-                ax.set_ylim([extenty[0], extenty[1]])
-            cbar = fig.colorbar(cax)
-            cbar.ax.tick_params(labelsize=15)
-            cbar.set_label('$' + fld_unit + '$', labelpad=-
-                           42.5, y=1.07, fontsize=15, rotation=0)
-
-        else:
-            # need to change vmin and vmax
-            if param == 'Por':
-                cax = ax1.pcolormesh(mod1.x, mod1.y, (1. - (1./step.data[0]))*100.,
-                                     vmin=vmiin, vmax=vmaax, cmap=fld_cmap, zorder=2)
-            else:
-                cax = ax1.pcolormesh(mod1.x, mod1.y, step.data[0]/fld_factor,
-                                     vmin=vmiin, vmax=vmaax, cmap=fld_cmap, zorder=2)
-
-            ax1.contour(mod1.xc, mod1.yc,
-                        step.cmc[0], 1, colors='k', linewidths=2, zorder=4)
-            ax1.set_xlim([0, extentx[1]])  # -2000,0 ## -1500,1500
-
-            for ax in [ax1]:
-                ax.set_ylim([extenty[0], extenty[1]])
-                ax.minorticks_off()
-                ax.tick_params('both', labelsize=16, length=10,
-                               width=2., which='major')
-            cbar = fig.colorbar(cax)
-            cbar.ax.tick_params(labelsize=15)
-            cbar.set_label('$' + fld_unit + '$', labelpad=-
-                           42.5, y=1.07, fontsize=15, rotation=0)
-
-        if norm == 0:
-            ax1.set_xlabel("x (m)", fontsize=20)
-            ax1.set_ylabel("y (m)", fontsize=20)
-            fig.tight_layout()
-
-        else:
-            ax1.set_xlabel(r"$x / R_{r}$", fontsize=20)
-            ax1.set_ylabel(r"$y / R_{r}$", fontsize=20)
-            fig.tight_layout()
-
-        ax1.set_title(r"$\mathit{t} = " + str(np.around(t1, decimals=2)) + " " + " s, $" + " " +
-                      "$\zeta$ = " + str(np.around(t1/t_trg, decimals=2)), position=(0.5, 0.9), fontsize=18)
-        st = fig.suptitle(lbl, fontsize=20)
-        st.set_y(0.97)
-        st.set_x(0.5)
-        fig.subplots_adjust(top=0.9)
-
-        if norm == 0:
-            figtitle = modelname + '_' + str(int(i)).zfill(3) + ".png"
-            fig.savefig(npath + figtitle, dpi=300)
-        elif norm == 1:
-            figtitle = 'itself_norm_' + modelname + \
-                '_' + str(int(i)).zfill(3) + ".png"
-            fig.savefig(npath + figtitle, dpi=300)
-        else:
-            figtitle = 'norm_' + modelname + \
-                '_' + str(int(i)).zfill(3) + ".png"
-            fig.savefig(npath + figtitle, dpi=300)
-        plt.close()
+                count = 0
+                
+                for ifld, fld in enumerate(fld_param):
+                    
+                    for iz, z in enumerate(zoom_id_up):
+                        
+                        fig = plt.figure(figsize=(6, 6))
+                        ax1 = fig.add_subplot(111)
+                        
+                        # plot data
+                        cax = ax1.pcolormesh(mod1.x, mod1.y, step.data[ifld]/fld_factor[ifld],
+                                                 vmin=vmiin[ifld],
+                                                 vmax=vmaax[ifld],
+                                                 cmap=fld_cmap[ifld], zorder=2)
+        
+                        ax1.contour(mod1.xc, mod1.yc,
+                                step.cmc[0], 1, colors='k', linewidths=2, zorder=4)
+                    
+                    
+        
+                        for ax in [ax1]:
+                            ax.minorticks_off()
+                            ax.tick_params('both', labelsize=16, length=10,
+                                           width=2., which='major')
+                            
+                        cbar = fig.colorbar(cax)
+                        cbar.ax.tick_params(labelsize=15)
+                        cbar.set_label('$' + fld_unit[ifld] + '$', labelpad=-
+                                       42.5, y=1.07, fontsize=15, rotation=0)
+                        
+                        # set labels
+                        ax1.set_xlabel(r"$x$", fontsize=20)
+                        ax1.set_ylabel(r"$y$", fontsize=20)
+                        
+                        # set title            
+                        ax1.set_title(r"$\mathit{t} = " + "{:.2f}".format(t1) + " " + " s$", position=(0.5, 0.9), fontsize=18)
+                        
+                        # related to the zoom
+                        ax1.set_xlim(extentx[iz])
+                        for ax in [ax1]:
+                            ax.set_ylim(extenty[iz])
+                        fig.tight_layout()
+                        
+                        st = fig.suptitle(nlbl[ifld], fontsize=20)
+                        st.set_y(0.97)
+                        st.set_x(0.5)
+                        fig.subplots_adjust(top=0.9)
+                            
+                        figtitle = modelname + '_' + str(int(i)).zfill(3) + ".png"
+                        fig.savefig(npath[count] + figtitle, dpi=300)
+                        
+                            
+                        plt.close()
+                        
+                        count = count + 1
+    except:
+        None
 
     mod1.closeFile()
 
@@ -725,6 +1008,48 @@ def field(param, path1, paths, norm, normpath, zoom_id, vmiin, vmaax, lbl):
 ***********************************************************************
 '''
 
+
+def mainevo(folders, path1, paths, norm, normpath, zoom_id, param):
+    
+    '''
+    path1 = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/benchmarkFI/CPPR/UAVG/CPPR10/'
+    paths = '/run/media/nilscp/Squall/benchmarkFI/CPPR10/data/'
+    normpath = ''
+    norm = 0
+    zoom_id = ['close', 'all', 'mid', 'hires'] # 'mid'; 'hires'; 'all' #depending on the zoom
+    param = 'all'
+    lbl = r"$\mathit{L} = 100 m"
+    L = [100]
+    
+    # maybe detect automatically from what stands behind L 
+    
+    Need to be tested
+    
+    
+    '''
+    os.chdir(path1)
+    
+    folders = glob.glob('*')
+    
+    for f in folders:
+        os.chdir(path1 + '/' + f)
+        modelnames = glob.glob('*')
+        print (modelnames)
+     
+        for im, modelname in enumerate(modelnames):
+            
+            pathsa = paths + modelname + '/'
+            path1a = path1 + f + '/' + modelname + '/'
+            
+            L = modelname.split('_L')[1]
+            Ln = L.split('_')[0]
+            
+            #normpath should be the same
+            lbla = r"$\mathit{L} = " + Ln + " m"
+                        
+            field(path1a, pathsa, norm, normpath, zoom_id, lbla, param = 'all')
+        
+        
 
 def main(pathdata, folders, pathplots):
     '''
@@ -747,7 +1072,6 @@ def main(pathdata, folders, pathplots):
         transient(pathdata, modelname, pathplots)
         final(pathdata, modelname, pathplots)
         excavated(pathdata, modelname, pathplots)
-        # evoplot
 
     print "ROCK'N ROLL"
 

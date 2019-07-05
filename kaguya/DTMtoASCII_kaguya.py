@@ -16,7 +16,6 @@ path_to_raster = "D:/Kaguya/SLDEM2013/"
 # file to copy (locations of preliminary rims)
 #infile = "D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya/layers/database.gdb/CRATER_validation"
 
-infile = "D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/rayed_craters_UPD_NILS"
 
 # Set overwrite option
 arcpy.env.overwriteOutput = True
@@ -26,112 +25,19 @@ arcpy.CheckOutExtension("3D")
 arcpy.CheckOutExtension("Spatial")
 
 
+infile = "X:/Moon/ANALYSIS/COLDSPOTS/database/database.gdb/coldspotsCopy"
+pathdab = r"D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/layers/database.gdb/"
+outASCII = r"D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/ascii_16R/"
 
-pathdab = r"D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/layers/database.gdb/"
-
-outASCII = "D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/ascii4R/" #"D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya/ASCII/" # change
+#infile = r"D:/ANALYSIS/SIMPLECRATERS_MOON/LAYERS/layers2019.gdb/rayed_craters_UPD_NILS"
+#pathdab = r"D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/layers/database.gdb/"
+#outASCII = r"D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/ascii4R/" #"D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/ascii/" #"D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya/ASCII/" # change
 
 # define paths and workspace (I need to create the gdb at some points)
 env.workspace = env.scratchWorkspace = pathdab
 
 # cellsize of the kaguya DTMs
 cellsize = 7.4031617
-
-'''
-**************************************************************************************************
-'''
-           
-def convert_to_simple_cylindrical(x_degree, y_degree, cellsize = 7.4031617):
-    
-    # latitude
-    y_simple_cylindrical = y_degree*(4096*cellsize)
-        
-    # longitude
-    x_simple_cylindrical = x_degree*(4096*cellsize)
-    
-    return (x_simple_cylindrical, y_simple_cylindrical)
-
-'''
-**************************************************************************************************
-'''
-def convert_sc360_to_sc180(ulx_scy_360, lrx_scy_360, cellsize = 7.403161724669900):
-    
-    ulx_degree = ulx_scy_360 / (4096*cellsize)
-    
-    lrx_degree = lrx_scy_360 / (4096*cellsize)
-    
-    if ulx_degree >= 180.0:
-        ulx_degree_180 = -(360.0 - ulx_degree)
-    else:
-        ulx_degree_180 = ulx_degree
-        
-    if lrx_degree >= 180.0:
-        lrx_degree_180 = -(360.0 - lrx_degree)
-    else:
-        lrx_degree_180 = lrx_degree
-        
-    ulx_sc180 = ulx_degree_180 * (4096*cellsize)
-    
-    lrx_sc180 = lrx_degree_180 * (4096*cellsize)
-    
-    return (ulx_sc180, lrx_sc180)
-    
-
-
-'''
-**************************************************************************************************
-'''
-
-def convert_simple_cylindrical_to_degree(x_scy, y_scy, cellsize = 7.4031617):
-    
-    # latitude
-    y_degree = y_scy / (4096*cellsize)
-    
-    # longitude 
-    x_degree = x_scy / (4096*cellsize)
-    
-    # convert x_degree to -180+180 degrees
-    if x_degree > 180.0:
-        x_converted = -(360.0 - x_degree)
-    else:
-        x_converted = x_degree
-    
-    return (x_converted, y_degree)
-
-'''
-**************************************************************************************************
-'''
-
-def convert_simple_cylindrical_to_xdegree(x_scy, cellsize = 7.4031617):
-        
-    # longitude 
-    x_degree = x_scy / (4096*cellsize)
-        
-    return (x_degree)
-
-'''
-**************************************************************************************************
-'''
-
-def convert_simple_cylindrical_to_ydegree(y_scy, cellsize = 7.4031617):
-    
-    # latitude
-    y_degree = y_scy / (4096*cellsize)
-    
-    return (y_degree)
-
-'''
-**************************************************************************************************
-'''
-
-def get_square(x_simple_cylindrical, y_simple_cylindrical, distance):
-    
-    top = y_simple_cylindrical + distance
-    bottom = y_simple_cylindrical - distance
-    left = x_simple_cylindrical - distance
-    right = x_simple_cylindrical + distance
-     
-    return (left, bottom, right, top)
 
 '''
 **************************************************************************************************
@@ -224,11 +130,13 @@ buffer_txt = np.chararray(n, itemsize=30)
 
 #crater_id = np.array(crater_id_list)
 
-with arcpy.da.UpdateCursor(infile, ["Diam_km", "CRATER_ID", "x_coord", "y_coord"]) as cursor:
+#with arcpy.da.UpdateCursor(infile, ["Diam_km", "CRATER_ID", "x_coord", "y_coord"]) as cursor:
+
+with arcpy.da.UpdateCursor(infile, ["Diameter", "CRATER_ID", "Lon", "Lat"]) as cursor:
     ix = 0
     for row in cursor:
-        a = 'crater' + str(int(ix)).zfill(4)
-        buffer_value = np.round((row[0]/2.) * 4.0, decimals=4) # changed to 8
+        a = 'cpcrater' + str(int(ix)).zfill(4)
+        buffer_value = np.round((row[0]/2000.0) * 16.0, decimals=4) # changed to 8 be careful when it changes from large to small
         b = str(buffer_value) + ' Kilometers'
         row[1] = a
         #row[1] = crater_id[ix]
@@ -273,8 +181,9 @@ arcpy.env.addOutputsToMap = 0
 '''
 **************************************************************************************************
 '''
+#with arcpy.da.UpdateCursor("CENTERN", ["Shape@", "x_coord", "y_coord"]) as cursor:
 
-with arcpy.da.UpdateCursor("CENTERN", ["Shape@", "x_coord", "y_coord"]) as cursor:
+with arcpy.da.UpdateCursor("CENTERN", ["Shape@", "Lon", "Lat"]) as cursor:
     ix = 0
     for row in cursor:
         
@@ -283,7 +192,7 @@ with arcpy.da.UpdateCursor("CENTERN", ["Shape@", "x_coord", "y_coord"]) as curso
             ix = ix + 1
         else:
             
-            distance_8r = ((diam[ix]/2.0) * 8.0) * 1000.0
+            #distance_8r = ((diam[ix]/2.0) * 8.0) #* 1000.0 # this had not been changed
             
             #query selection CENTER
             query = "CRATER_ID = '" + crater_id[ix] + "'"
@@ -335,24 +244,47 @@ with arcpy.da.UpdateCursor("CENTERN", ["Shape@", "x_coord", "y_coord"]) as curso
             
             ExtStr = "{} {} {} {}".format(left, bottom, right, top)
             
-                        # the extent of the squared area is converted back to degrees
-            leftn = convert_simple_cylindrical_to_xdegree(left)
-            bottomn = convert_simple_cylindrical_to_ydegree(bottom)
-            rightn = convert_simple_cylindrical_to_xdegree(right)
-            topn = convert_simple_cylindrical_to_ydegree(top)
+            # 11.06.2019 convert from local ref to lat/lon with the help of arcgis
+            xpoints = np.array([left, left, right, right])
+            ypoints = np.array([top, bottom, top, bottom])
+            datapoints = np.column_stack((xpoints, ypoints))
             
+            commentstxt = "x;y"
+            np.savetxt(path_to_raster + "tmp_square_coordinates.txt", datapoints, header=commentstxt, delimiter=";", comments="")
+                        
+            arcpy.MakeXYEventLayer_management(path_to_raster + "tmp_square_coordinates.txt","x","y","square_points_tmp",spatialReference_new)
+            arcpy.FeatureToPoint_management("square_points_tmp", "square_points")
+            
+            # Replace a layer/table view name with a path to a dataset (which can be a layer file) or create the layer/table view within the script
+            arcpy.Project_management(in_dataset="square_points", out_dataset="square_points_latlon", out_coor_system="GEOGCS['GCS_Moon_2000',DATUM['D_Moon_2000',SPHEROID['Moon_2000_IAU_IAG',1737400.0,0.0]],PRIMEM['Reference_Meridian',0.0],UNIT['Degree',0.0174532925199433]]", 
+                         transform_method="", in_coor_system=spatialReference_new, 
+                         preserve_shape="NO_PRESERVE_SHAPE", max_deviation="", vertical="NO_VERTICAL")
+            
+            # add x, y coordinates
+            arcpy.AddXY_management(in_features="square_points_latlon")
+            
+            # extract data
+            xpoints_converted = []
+            ypoints_converted = []
+            
+            with arcpy.da.UpdateCursor("square_points_latlon", ["POINT_X", "POINT_Y"]) as cursorpoints:
+                for rowp in cursorpoints:
+                    xpoints_converted.append(rowp[0])
+                    ypoints_converted.append(rowp[1])
+                    
+            leftn = xpoints_converted[0]
+            rightn = xpoints_converted[2]
+            topn = ypoints_converted[0]
+            bottomn = ypoints_converted[1]
+                       
             # and it is feeded to the select DTMs function
             # it will return the DTMs that cover the squared area
-            
-            
-            leftn = leftn + np.round(row[1],decimals=0)
-            rightn = rightn + np.round(row[1],decimals=0)
             
             if leftn < 0:
                 leftn = 360 + leftn
                 
             if rightn < 0:
-                rightn = 360 + rightn
+                rightn = 360 + rightn            
             
             # in the case where you have a left boundary > 180.0 and right boundary < 180.0
             #example left = 359.0 and right = 1.0

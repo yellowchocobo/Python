@@ -776,39 +776,45 @@ def main(path, folders, paths, mode, id_mat, transient, idx_manual = 0):
 
         os.chdir(path_data)
 
-        # at t/tr = 10
+        # at t/tr for different times
         tnorm = time / time[idx_tr]
-        __, stp1 = find_nearest(tnorm, 10)
-
-        fname = modelname + '_final.txt'
-        header_txt = "f_time\tf_depth\tf_diameter\tf_vol\tf_alt\tf_drim\tf_Vrim"
-
-        # if it did not reach the final crater, then nothing should be save in the final folder
-        if tnorm[np.where(~np.isnan(diam))[0][-1]] >= 9:
-
-            # final crater values are stored in another .txt file and folder
-            if mode == 0:
-                output2 = np.column_stack((np.nanmean(time[stp1]), np.nanmean(depth[stp1]), np.nanmean(
-                    diam[stp1]), np.nanmean(vol[stp1]), np.nanmean(alt[stp1]), np.nanmean(drim[stp1]), np.nanmean(Vrim[stp1])))
-                np.savetxt(fname, output2, header=header_txt,
-                           delimiter='\t', fmt=['%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
+        
+        # save for t/tr = 2, 3, 4, 5, 7.5 and 10.0        
+        tnorm_fname = ['020', '030', '040', '050', '070', '100']
+        
+        for iv, tnormv in enumerate([2.0, 3.0, 4.0, 5.0, 7.0, 10.0]):
+            
+            __, stp1 = find_nearest(tnorm, tnormv)
+    
+            fname = modelname + '_final' + tnorm_fname[iv] + '.txt'
+            header_txt = "f_time\tf_depth\tf_diameter\tf_vol\tf_alt\tf_drim\tf_Vrim"
+    
+            # if it did not reach the final crater, then nothing should be save in the final folder
+            if tnorm[np.where(~np.isnan(diam))[0][-1]] >= tnormv - 0.20:
+    
+                # final crater values are stored in another .txt file and folder
+                if mode == 0:
+                    output2 = np.column_stack((np.nanmean(time[stp1]), np.nanmean(depth[stp1]), np.nanmean(
+                        diam[stp1]), np.nanmean(vol[stp1]), np.nanmean(alt[stp1]), np.nanmean(drim[stp1]), np.nanmean(Vrim[stp1])))
+                    np.savetxt(fname, output2, header=header_txt,
+                               delimiter='\t', fmt=['%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
+                else:
+                    output2 = np.column_stack((np.nanmean(time[stp1]), np.nanmean(mdepth[stp1]), np.nanmean(
+                        diam[stp1]), np.nanmean(vol[stp1]), np.nanmean(alt[stp1]), np.nanmean(drim[stp1]), np.nanmean(Vrim[stp1])))
+                    np.savetxt(fname, output2, header=header_txt,
+                               delimiter='\t', fmt=['%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
+    
             else:
-                output2 = np.column_stack((np.nanmean(time[stp1]), np.nanmean(mdepth[stp1]), np.nanmean(
-                    diam[stp1]), np.nanmean(vol[stp1]), np.nanmean(alt[stp1]), np.nanmean(drim[stp1]), np.nanmean(Vrim[stp1])))
-                np.savetxt(fname, output2, header=header_txt,
-                           delimiter='\t', fmt=['%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
-
-        else:
-            if mode == 0:
-                output2 = np.column_stack(
-                    (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan))
-                np.savetxt(fname, output2, header=header_txt,
-                           delimiter='\t', fmt=['%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
-            else:
-                output2 = np.column_stack(
-                    (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan))
-                np.savetxt(fname, output2, header=header_txt,
-                           delimiter='\t', fmt=['%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
+                if mode == 0:
+                    output2 = np.column_stack(
+                        (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan))
+                    np.savetxt(fname, output2, header=header_txt,
+                               delimiter='\t', fmt=['%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
+                else:
+                    output2 = np.column_stack(
+                        (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan))
+                    np.savetxt(fname, output2, header=header_txt,
+                               delimiter='\t', fmt=['%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e', '%1.6e'])
                 
                 
         ####################################################################
@@ -971,6 +977,50 @@ def CAVITY_SHAPE_EXPONENT(r,d):
 ***********************************************************************
 '''
 
+def get_cross_section(model, step, id_mat, oridy):
+    
+    # find the maximum diameter along the pre-impact surface
+        ixx = ixdiam(step, id_mat, oridy)
+
+        # get the concentration
+        extra = np.int(np.round(((model.nx - ixx) / 1.5) + ixx))
+        conc = step.cmc[0][:extra, :]  # + 1 before
+
+        # define the x- and y-indexes
+        ii = np.arange(extra)
+        jj = np.array([])
+
+        # values are append to y-index if.....
+        for values in ii:
+
+            ma = movingaverage(conc[values, :], 20)
+            lll = np.where(ma < 0.01)[0]
+            if lll.size == 0:
+                tijf = np.where(ma == np.min(ma))[0][0]
+            else:
+                tijf = lll[0]
+            jj = np.append(jj, tijf)
+
+        # create empty arrays
+        jj = jj.astype(int)
+        altr = np.array([])
+        rrim = np.array([])
+
+        # calculate the height and distance
+        for values in np.arange(len(jj)):
+
+            a1 = (model.y[ii[values], jj[values]+1]) - \
+                ((1 - step.cmc[0][ii[values], jj[values]]) * model.dy)
+            a2 = (np.abs(model.xc[ii[values], jj[values]]))
+            altr = np.append(altr, a1)
+            rrim = np.append(rrim, a2)
+            
+            
+        return (rrim, altr)
+'''
+***********************************************************************
+'''
+
 
 def craterProfiles(folders, path, paths, idx, mode):
     '''
@@ -1025,114 +1075,118 @@ def craterProfiles(folders, path, paths, idx, mode):
 
         # Get the y-index of the pre-surface
         oridy = np.where(model.yy == 0.)[0][0]
+        
+        # get the time step (in sec)
+        den1 = model.readStep('Den', 1)
+        timestep = den1.time
+        
+        # get the total time of the simulation
+        total_time = model.laststep * timestep
+        
+        # get the index at when the transient crater is reached
+        tr_time , __, __, __, __, __, __, idx_tr = np.loadtxt(paths + modelname + 
+                                                        '/transient/' + 
+                                                        modelname + '_tr.txt')
+        
+        idx_tr = idx_tr.astype('int')
 
-        # load data depending on the mode
+        # get the total time of the simulation (in normalized time)
+        total_time_norm = total_time / tr_time
+        
+        # default normalized time
+        default_ntime = np.array([2.0, 3.0, 4.0, 5.0, 7.0, 10.0])
+        default_ntime = default_ntime.astype('int')
+        default_nfname = np.array(['020', '030', '040', '050', '070', '100'])
+        
+        # where we have actually data for
+        real_ntime = default_ntime[default_ntime <= total_time_norm]
+        real_nfname = default_nfname[default_ntime <= total_time_norm]
+        
+        # load data depending on the mode (if transient only)
         if mode == 1:
-            __, __, __, __, __, __, __, idx_tr = np.loadtxt(
-                paths + modelname + '/transient/' + modelname + '_tr.txt')
-            idx_tr = idx_tr.astype('int')
+            
+            ####################################################
+            # TRANSIENT CRATER
+            ####################################################            
+            
             den = model.readStep('Den', idx_tr)
-        elif mode == 2:
-            den = model.readStep('Den', model.nsteps-1)
-        elif mode == 3:
-            den = model.readStep('Den', idx)
-
-        # make a hard copy
-        step = copy.deepcopy(den)
-
-        # find the maximum diameter along the pre-impact surface
-        ixx = ixdiam(step, id_mat, oridy)
-
-        # get the concentration
-        extra = np.int(np.round(((model.nx - ixx) / 1.5) + ixx))
-        conc = step.cmc[0][:extra, :]  # + 1 before
-
-        # define the x- and y-indexes
-        ii = np.arange(extra)
-        jj = np.array([])
-
-        # values are append to y-index if.....
-        for values in ii:
-
-            ma = movingaverage(conc[values, :], 20)
-            lll = np.where(ma < 0.01)[0]
-            if lll.size == 0:
-                tijf = np.where(ma == np.min(ma))[0][0]
-            else:
-                tijf = lll[0]
-            jj = np.append(jj, tijf)
-
-        # create empty arrays
-        jj = jj.astype(int)
-        altr = np.array([])
-        rrim = np.array([])
-
-        # calculate the height and distance
-        for values in np.arange(len(jj)):
-
-            a1 = (model.y[ii[values], jj[values]+1]) - \
-                ((1 - step.cmc[0][ii[values], jj[values]]) * model.dy)
-            a2 = (np.abs(model.xc[ii[values], jj[values]]))
-            altr = np.append(altr, a1)
-            rrim = np.append(rrim, a2)
-
-        # save data to .txt file
-
-        ####################################################
-        # TRANSIENT CRATER
-        ####################################################
-
-        if mode == 1:
-
+            step = copy.deepcopy(den)
+            (rrim, altr) = get_cross_section(model, step, id_mat, oridy)
+            
             path_to_save = paths + modelname + '/transient/'
 
             if not os.path.exists(path_to_save):
                 os.makedirs(path_to_save)
 
             os.chdir(path_to_save)
+            
             fname = modelname + '_XYtransientprofile.txt'
+            
+            header_txt = "distance\tdepth"
 
-        ####################################################
-        # FINAL CRATER
-        ####################################################
+            output = np.column_stack((rrim, altr))
 
-        if mode == 2:
-
-            path_to_save = paths + modelname + '/final/'
-
-            if not os.path.exists(path_to_save):
-                os.makedirs(path_to_save)
-
-            os.chdir(path_to_save)
-            fname = modelname + '_XYfinalprofile.txt'
-
-        ####################################################
-        # ARBITRATRY TIME
-        ####################################################
-
-        if mode == 3:
-
+            np.savetxt(fname, output, header=header_txt,
+                       delimiter='\t', fmt=['%1.6e', '%1.6e'])
+            
+        elif mode == 3:
+            
+            ####################################################
+            # SELECTED CRATER
+            ####################################################               
+            
+            den = model.readStep('Den', idx)
+            step = copy.deepcopy(den)
+            (rrim, altr) = get_cross_section(model, step, id_mat, oridy)
+            
             path_to_save = paths + modelname + '/arbitrary/'
 
             if not os.path.exists(path_to_save):
                 os.makedirs(path_to_save)
 
             os.chdir(path_to_save)
+            
             fname = modelname + '_XY' + str(idx) + '_profile.txt'
+            
+            header_txt = "distance\tdepth"
 
-        ###
+            output = np.column_stack((rrim, altr))
 
-        header_txt = "distance\tdepth"
+            np.savetxt(fname, output, header=header_txt,
+                       delimiter='\t', fmt=['%1.6e', '%1.6e'])
+            
+        else: # mode == 2
 
-        output = np.column_stack((rrim, altr))
+            ####################################################
+            # FINAL CRATER at different normalized time
+            ####################################################  
+        
+            for ir, r in enumerate(real_ntime):
+                
+                idx = r * idx_tr
+                den = model.readStep('Den', idx)
+                step = copy.deepcopy(den)
+                (rrim, altr) = get_cross_section(model, step, id_mat, oridy)
+                
+                path_to_save = paths + modelname + '/final/'
 
-        np.savetxt(fname, output, header=header_txt,
-                   delimiter='\t', fmt=['%1.6e', '%1.6e'])
+                if not os.path.exists(path_to_save):
+                    os.makedirs(path_to_save)
+    
+                os.chdir(path_to_save)
+                fname = modelname + '_XYfinalprofile' + real_nfname[ir] + '.txt'
+                
+                header_txt = "distance\tdepth"
+
+                output = np.column_stack((rrim, altr))
+
+                np.savetxt(fname, output, header=header_txt,
+                           delimiter='\t', fmt=['%1.6e', '%1.6e'])
 
         # close model file
         model.closeFile()
 
-    print ("transient profiles are saved")
+    print ("transient/final crater profiles are saved")
 
 
 '''

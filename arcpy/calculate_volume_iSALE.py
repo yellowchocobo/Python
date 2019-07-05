@@ -58,44 +58,133 @@ def load3d(filenameX, filenameY, filenameZ):
     
     return (dataX, dataY, dataZ)
 
+'''
+**************************************************************************************************
+'''
+
+def deg2rad(deg):
+    
+    output = deg * (np.pi/180.0)
+    
+    return output
+
+'''
+******************************************************************************
+'''
+
+def find_nearest(array, value):
+    
+    '''
+    __, ixx = find_nearest(x, x2[0])
+    __, iyy = find_nearest(y, y2[0])
+    '''
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx], idx
 
 '''
 **************************************************************************************************
 '''
 
-def crater_volume(pathdata, crater_id, resolution_DEM = 59.2252937999999):
+def crossto3D(path, number_of_cross_sections):
+    
+    '''
+    path same as paths
+    '''
+    
+    os.chdir(path)
+    
+    # define modelname
+    first_part_string = path.split('/final')[0]
+    modelname = first_part_string.split('data/')[1]
+    
+    data = np.loadtxt(path + modelname + '_XYfinalprofile.txt')
+    
+    dist = data[:,0]
+    zi = data[:,1]
+    cellsize = dist[1] - dist[0]
+    
+
+    
+    filenameX = modelname + "_cross_sectionsX.txt" 
+    filenameY = modelname + "_cross_sectionsY.txt"
+    filenameZ = modelname + "_cross_sectionsZ.txt"
+    
+    i = np.arange(0,360,360/number_of_cross_sections)
+    
+    
+        # create empty arrays
+    X = np.ones((len(i), len(zi)))
+    Y = np.ones((len(i), len(zi)))
+    Z = np.ones((len(i), len(zi)))
+    
+    for idx, angle in enumerate(i):
+        
+        x = np.cos(deg2rad(angle)) * dist
+        y = np.sin(deg2rad(angle)) * dist
+        
+        idxi = int(idx)
+        
+        X[idxi,:] = x
+        Y[idxi,:] = y
+        Z[idxi,:] = zi
+        
+    np.savetxt(path + filenameX, X, delimiter = ";",fmt='%10.5f', comments='#')
+    np.savetxt(path + filenameY, Y, delimiter = ";",fmt='%10.5f', comments='#')
+    np.savetxt(path + filenameZ, Z, delimiter = ";",fmt='%10.5f', comments='#')
+    
+               
+    print ("GENERIC CROSS SECTIONS have been calculated")
+        
+    
+
+'''
+**************************************************************************************************
+'''
+
+def crater_volume(path):
     
     '''
     Calculate the crater volume based on all available profiles
     
     '''
     
-    os.chdir(pathdata)
     
+    os.chdir(path)
+    
+    # define modelname
+    first_part_string = path.split('/final')[0]
+    modelname = first_part_string.split('data/')[1]
+    
+    data = np.loadtxt(path + modelname + '_XYfinalprofile.txt')
+    
+    dist = data[:,0]
+    
+    # generate a "fake" 3D impact crater
+    number_of_cross_sections = 15.0
+    crossto3D(path, number_of_cross_sections)
+    
+        
     # load X, Y, Z for all profiles for specific crater_id
-    filenameX = crater_id + "_cross_sectionsX.txt"
-    filenameY = crater_id + "_cross_sectionsY.txt"
-    filenameZ = crater_id + "_cross_sectionsZ.txt"
+    filenameX = modelname + "_cross_sectionsX.txt"
+    filenameY = modelname + "_cross_sectionsY.txt"
+    filenameZ = modelname + "_cross_sectionsZ.txt"
     
     (dataX, dataY, dataZ) = load3d(filenameX, filenameY, filenameZ)
     
-    # load the median diameter
+    # load the median diameter (MODIFY MAYBE from somewhere else) (most important to change)
     filename_meddiam = crater_id + "_res.txt"
 
     tmp_data = np.loadtxt(filename_meddiam, delimiter=";", comments="#")
     med_diam  = tmp_data[0]
     
     # number of cross sections 
-    n = np.shape(dataX)[1]
+    n = np.shape(dataX)[0]
     
     # transform it to a dictionnary
     data_dict = {'cross_section' : [], 'X' : [], 'Y' : [], 'elevation' : []} 
     
-    
-    # calculate the distance along the profiles (same for all)
-    dist_cells = np.sqrt(((dataX[:,0] - dataX[0,0])**2.) + ((dataY[:,0] - dataY[0,0])**2.))
-    dist = dist_cells * resolution_DEM # SLDEM resolution
-    
+        
     # select only distances smaller than the median diameter
     
     try:
@@ -105,25 +194,24 @@ def crater_volume(pathdata, crater_id, resolution_DEM = 59.2252937999999):
         # set data in the newly created dictionnary
         for i in range(n):
             data_dict['cross_section'].append(i)  
-            data_dict['X'].append(dataX[:argmax+1,i])
-            data_dict['Y'].append(dataY[:argmax+1,i])
-            data_dict['elevation'].append(dataZ[:argmax+1,i])
+            data_dict['X'].append(dataX[i,:argmax+1])
+            data_dict['Y'].append(dataY[i, :argmax+1])
+            data_dict['elevation'].append(dataZ[i, :argmax+1])
         
         # load dictionnary in pandas DataFrame   
         data_pd = pd.DataFrame(data_dict)
         
         nvalues = argmax + 1
-        nprof = np.shape(dataX)[1]
-        posit = np.ones((nvalues*nprof, 3))
+        posit = np.ones((nvalues*n, 3))
         
         # prepare the data so we have an array with X, Y, Z (positions)
-        for p in range(nprof):
+        for p in range(n):
             for i in range(nvalues):
                 
                 #index
                 ind = (nvalues * p) + i
                 
-                posit[ind] = np.array([data_pd.X[p][i]*59.2252937999999,data_pd.Y[p][i]*59.2252937999999,data_pd.elevation[p][i]])
+                posit[ind] = np.array([data_pd.X[p][i],data_pd.Y[p][i],data_pd.elevation[p][i]])
                 
         # calculate the volume of the surface (result in m3)
         vol = convex_hull_volume_bis(posit)

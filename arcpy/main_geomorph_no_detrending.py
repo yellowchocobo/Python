@@ -95,12 +95,16 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
         # the number of columns, rows and extent of the raster is read
         (ncols, nrows, xllcorner, yllcorner, cellsize, NODATA_value) = wk.readheader(path,filename + ".asc")
         
-        # get x, y
-        x = np.linspace(0,(ncols-1)*cellsize,ncols)
-        y = np.linspace(0,(nrows-1)*cellsize,nrows)
+        # take the minimum of ncols, nrows and ncols and nrows of data
+        nrowsd, ncolsd = np.shape(data)
+        ncolsnrows = np.min([ncols, nrows, ncolsd, nrowsd])
+        data = data[:ncolsnrows, :ncolsnrows]
         
-        xe = np.linspace(cellsize/2.0, (cellsize/2.0) + ((ncols-1)*cellsize), ncols)
-        ye = np.linspace(cellsize/2.0, (cellsize/2.0) + ((nrows-1)*cellsize), nrows)
+        x = np.linspace(0,(ncolsnrows-1)*cellsize,ncolsnrows)
+        y = np.linspace(0,(ncolsnrows-1)*cellsize,ncolsnrows)
+        
+        xe = np.linspace(cellsize/2.0, (cellsize/2.0) + ((ncolsnrows-1)*cellsize), ncolsnrows)
+        ye = np.linspace(cellsize/2.0, (cellsize/2.0) + ((ncolsnrows-1)*cellsize), ncolsnrows)
         
         # create my own matrices for the plotting with pcolor or pcolormesh
         xc = np.zeros_like(data)
@@ -108,11 +112,11 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata):
         xce = np.zeros_like(data)
         yce = np.zeros_like(data)
         
-        for i in range(nrows):
+        for i in range(ncolsnrows):
             xc[:,i] = x
             xce[:,i] = xe
             
-        for i in range(ncols):
+        for i in range(ncolsnrows):
             yc[i,:] = y
             yce[i,:] = ye
                 
@@ -451,28 +455,16 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         # the number of columns, rows and extent of the raster is read
         (ncols, nrows, xllcorner, yllcorner, cellsize, NODATA_value) = wk.readheader(path, filename + ".asc")
         
-        #print diam
-        # x and y axes are created (x and y have the same size so it is not a big deal
-        # if we mix up here)
-        x = np.linspace(0,(ncols-1)*cellsize,ncols)
-        y = np.linspace(0,(nrows-1)*cellsize,nrows)
+        # take the minimum of ncols, nrows and ncols and nrows of data
+        nrowsd, ncolsd = np.shape(data)
+        ncolsnrows = np.min([ncols, nrows, ncolsd, nrowsd])
+        data = data[:ncolsnrows, :ncolsnrows]
         
-        xe = np.linspace(cellsize/2.0, (cellsize/2.0) + ((ncols-1)*cellsize), ncols)
-        ye = np.linspace(cellsize/2.0, (cellsize/2.0) + ((nrows-1)*cellsize), nrows)
+        x = np.linspace(0,(ncolsnrows-1)*cellsize,ncolsnrows)
+        y = np.linspace(0,(ncolsnrows-1)*cellsize,ncolsnrows)
         
-        # create my own matrices for the plotting with pcolor or pcolormesh
-        xc = np.zeros_like(data)
-        yc = np.zeros_like(data)
-        xce = np.zeros_like(data)
-        yce = np.zeros_like(data)
-        
-        for i in range(nrows):
-            xc[:,i] = x
-            xce[:,i] = xe
-            
-        for i in range(ncols):
-            yc[i,:] = y
-            yce[i,:] = ye
+        xe = np.linspace(cellsize/2.0, (cellsize/2.0) + ((ncolsnrows-1)*cellsize), ncolsnrows)
+        ye = np.linspace(cellsize/2.0, (cellsize/2.0) + ((ncolsnrows-1)*cellsize), ncolsnrows)
         
         # create my own matrices for the plotting with pcolor or pcolormesh
         xc = np.zeros_like(data)
@@ -480,13 +472,13 @@ def run2(path, filenameXY, filenamecrater, pathdata):
         xce = np.zeros_like(data)
         yce = np.zeros_like(data)
         
-        for i in range(nrows):
+        for i in range(ncolsnrows):
             xc[:,i] = x
             xce[:,i] = xe
             
-        for i in range(ncols):
+        for i in range(ncolsnrows):
             yc[i,:] = y
-            yce[i,:] = ye        
+            yce[i,:] = ye       
         
         #load the data
         datagis = loadgis(pathdata, name_crater_txt)

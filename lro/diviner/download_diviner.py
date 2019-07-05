@@ -6,15 +6,13 @@ Created on Fri May  3 16:25:01 2019
 
 for SLDEM (1x1):
     
-    http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-sldem2013-v1.0/lon000/data/DTM_MAP_01_N00E000S01E001SC.img
-    http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-sldem2013-v1.0/lon000/data/DTM_MAP_01_N01E000N00E001SC.img
-    http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-sldem2013-v1.0/lon000/data/DTM_MAP_01_N02E000N01E001SC.img
-    http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-sldem2013-v1.0/lon000/data/DTM_MAP_01_N90E000N89E001SC.lbl
+    http://pds-geosciences.wustl.edu/lro/lro-l-dlre-4-rdr-v1/lrodlr_1001/data/
     
-    http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-sldem2013-v1.0/lon000/data/DTM_MAP_01_S01E000S02E001SC.img
-    http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-sldem2013-v1.0/lon000/data/DTM_MAP_01_S02E000S03E001SC.img
+for RA (in cylindrical):
     
-    http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-sldem2013-v1.0/lon359/data/DTM_MAP_01_N00E359S01E000SC.img
+    http://pds-geosciences.wustl.edu/lro/lro-l-dlre-4-rdr-v1/lrodlr_1001/data/gdr_l3/cylindrical/img/
+    
+
     
 
 """
@@ -35,15 +33,13 @@ def download(path_to_save, default_link, default_link2, min_latitude, max_latitu
     '''
     generate links to download SLDEM2013 (1x1 degree)
     
-    default_link = 'http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-ortho-map-v2.0/' # (images, 3 by 3)
-    default_link = 'http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-evening-map-v4.0/' (images evening, 3 by 3)
-    default_link = 'http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-morning-map-v4.0/' (images morning, 3 by 3)
-    default_link = 'http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-sldem2013-v1.0/' # (dtm, 1 by 1)
+    default_link = 'http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-ortho-map-v2.0/' # (images)
+    default_link = 'http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-evening-map-v4.0/' (images evening)
+    default_link = 'http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-morning-map-v4.0/' (images morning)
+    default_link = 'http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-sldem2013-v1.0/' # (dtm)
     
     default_link2 = '/data/TCO_MAP_02_'
     default_link2 = '/data/DTM_MAP_01_'
-    default_link2 = '/data/TCO_MAPe04_' # evening
-    default_link2 = '/data/TCO_MAPm04_' # morning
     '''    
     img_to_download = []
     lbl_to_download = []
@@ -144,11 +140,11 @@ def select_DTMs(bottom, top, left, right):
 **************************************************************************************************
 '''
 
-path_to_save = 'E:/Kaguya/MORNING/'
-default_link = 'http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-morning-map-v4.0/' #(images morning, 3 by 3)
-default_link2 = '/data/TCO_MAPm04_' # morning
-min_latitude = 30 # 60
-max_latitude = 33 # 60
+path_to_save = 'D:/Kaguya/ORTHOIMAGES/'
+default_link = 'http://darts.isas.jaxa.jp/pub/pds3/sln-l-tc-5-ortho-map-v2.0/'
+default_link2 = '/data/TCO_MAP_02_'
+min_latitude = -60 # 60
+max_latitude = 62 # 60
 min_longitude = 0
 max_longitude = 360 # actually 360
  

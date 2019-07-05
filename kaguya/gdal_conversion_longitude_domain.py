@@ -84,7 +84,7 @@ def translate(args):
     
     """with a def you can easily change your subprocess call"""
     # command construction with binary and options
-    options = ['/work/nilscp/anaconda2/bin/gdal_translate']
+    options = ['/work/nilscp/anaconda3/envs/dem_analysis/bin/gdal_translate']
     options.extend(args)
     # call gdalwarp 
     subprocess.check_call(options)
@@ -137,7 +137,7 @@ def GetExtent(gt,cols,rows):
 '''
 **************************************************************************************************
 '''
-path_raster = '/run/media/nilscp/Squall/Kaguya/ORTHOIMAGES/'
+path_raster = '/run/media/nilscp/Squall/Kaguya/MORNING/'
 
 os.chdir(path_raster)
 

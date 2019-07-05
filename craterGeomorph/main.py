@@ -31,8 +31,12 @@ import glob
 import os
 
 # add directories, which contain my in-house scripts
-pathm = ['/work/nilscp/Python/prog/export', '/work/nilscp/Python/prog/clean', '/work/nilscp/Python/prog/import',
-         '/work/nilscp/Python/prog/scal', '/work/nilscp/Python/Papers/Paper3']
+#pathm = ['/work/nilscp/Python/prog/export', '/work/nilscp/Python/prog/clean', '/work/nilscp/Python/prog/import',
+#         '/work/nilscp/Python/prog/scal', '/work/nilscp/Python/Papers/Paper3']
+
+
+pathm = ['/uio/kant/geo-ceed-u1/nilscp/Nils/Python/craterGeomorph']
+
 
 # add directories to system path
 for pat in pathm:
@@ -40,30 +44,13 @@ for pat in pathm:
 
 # import various in-house sub-routines
 #import export
-import ejecta as ej
+#import ejecta as ej
 import crater as cr
-import plotting
-import read as readd
+#import plotting
+#import read as readd
 '''
 ***********************************************************************
 '''
-
-# main directory which contains models with jdata
-#path = '/var/tmp/mysshfs/stallo/collapse/ART3/results/'
-path = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/ejecta/results/velocity/'
-
-os.chdir(path)
-
-# selection of folders
-search = '*kms_C1000'
-folders = glob.glob(search)
-
-#folders =  ['C00P20F08_L250', 'C00P20F08_L500','C00P20F08_L1000']
-#folders =['ACFDIL_NOPOR_108_L700']
-
-
-pathdata = '/work/nilscp/iSALE/isaleruns/data/ejecta/velocity/'
-pathplots = '/work/nilscp/iSALE/isaleruns/data/ejecta/velocity/plots/'
 
 ###############################################################################
 # 0. INPUT
@@ -81,16 +68,39 @@ id_mat = 0  # 0 = everything, 2 only lower material, especially practical in lay
 transient = 0  # 0 transient at max volume, 1: transient at maximum depth
 thresholdf = 0.01
 g = 1.62
+
 '''
 ***********************************************************************
 '''
+
+
+# main directory which contains models with jdata
+#path = '/var/tmp/mysshfs/stallo/collapse/ART3/results/'
+pathm = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/benchmarkFI/CPPR/UAVG/CPPR5/'
+
+folders =  ['CDILNOA', 'CDILNOP', 'CDILWPA', 'CDILWPA2', 'CDILWPO', 'CDILWPO2', 
+            'COLDNOP', 'COLDWPO', 'COLDWPO2', 'IVANOVS', 'SANDCOH']
+
+
+for f in folders:
+    
+    path = pathm + f + '/'
+
+    os.chdir(path)
+
+    # selection of folders
+    search = '*'
+    models = glob.glob(search)
+
+    pathdata = '/run/media/nilscp/Squall/benchmarkFI/CPPR5/data/'
+    pathplots = '/run/media/nilscp/Squall/benchmarkFI/CPPR5/plots/'
 
 ###############################################################################
 # 1. CALCULATE EXCAVATED CRATER DIMENSIONS
 ###############################################################################
 
 # Ve, de, De and shape of cavities
-ej.main(path, folders, pathdata, method, thresholdf, g)
+#ej.main(path, folders, pathdata, method, thresholdf, g)
 
 
 ###############################################################################
@@ -99,14 +109,14 @@ ej.main(path, folders, pathdata, method, thresholdf, g)
 # 4. CALCULATE CRATER DIMENSIONS AT THE FINAL CRATER (LAST FIVE TIMESTEPS)
 ###############################################################################
 
-cr.main(path, folders, pathdata, mode, id_mat, transient)
+    cr.main(path, models, pathdata, mode, id_mat, transient)
 
 
 ###############################################################################
 # 5. SAVE TXT FILE WITH X AND Y FOR THE TRANSIENT and FINAL CRATER
 ###############################################################################
-cr.craterProfiles(folders, path, pathdata, 0, 1)  # XY transient craters
-cr.craterProfiles(folders, path, pathdata, 0, 2)  # XY final craters
+    cr.craterProfiles(models, path, pathdata, 0, 1)  # XY transient craters
+    cr.craterProfiles(models, path, pathdata, 0, 2)  # XY final craters
 # evo.XY_PROFILE(folders, path, pathdata, 19, 3) # arbitrary
 
 
