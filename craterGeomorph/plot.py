@@ -829,7 +829,7 @@ def field(path1, paths, norm, normpath, zoom_id, lbl, vmiin, vmaax, manualx, man
         
         # small change (for case with only one selected parameter)
         if param != 'all':
-            nlbl.append(lbl + ", " + fld_name + "$")
+            nlbl.append(lbl + ", " + fld_name) #+ "$" # the $ introduces some errors ...
             fld_param = [fld_param]
             fld_factor = [fld_factor]
             fld_name = [fld_name]
@@ -837,7 +837,7 @@ def field(path1, paths, norm, normpath, zoom_id, lbl, vmiin, vmaax, manualx, man
             fld_unit = [fld_unit]
         else:        
             for fname in fld_name:
-                nlbl.append(lbl + ", " + fname + "$")
+                nlbl.append(lbl + ", " + fname) #+ "$" # the $ introduces some errors ...
         
         # print fld_param
         print (fld_param)
