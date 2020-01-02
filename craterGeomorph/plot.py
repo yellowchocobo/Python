@@ -840,7 +840,7 @@ def field(path1, paths, norm, normpath, zoom_id, lbl, vmiin, vmaax, manualx, man
                 nlbl.append(lbl + ", " + fname + "$")
         
         # print fld_param
-        print fld_param
+        print (fld_param)
 
 
         
@@ -1073,7 +1073,7 @@ def main(pathdata, folders, pathplots):
         final(pathdata, modelname, pathplots)
         excavated(pathdata, modelname, pathplots)
 
-    print "ROCK'N ROLL"
+    print ("ROCK'N ROLL")
 
 
 '''

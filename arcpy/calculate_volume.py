@@ -72,62 +72,72 @@ def crater_volume(pathdata, crater_id, resolution_DEM = 59.2252937999999):
     
     os.chdir(pathdata)
     
-    # load X, Y, Z for all profiles for specific crater_id
-    filenameX = crater_id + "_cross_sectionsX.txt"
-    filenameY = crater_id + "_cross_sectionsY.txt"
-    filenameZ = crater_id + "_cross_sectionsZ.txt"
-    
-    (dataX, dataY, dataZ) = load3d(filenameX, filenameY, filenameZ)
-    
-    # load the median diameter
-    filename_meddiam = crater_id + "_res.txt"
-
-    tmp_data = np.loadtxt(filename_meddiam, delimiter=";", comments="#")
-    med_diam  = tmp_data[0]
-    
-    # number of cross sections 
-    n = np.shape(dataX)[1]
-    
-    # transform it to a dictionnary
-    data_dict = {'cross_section' : [], 'X' : [], 'Y' : [], 'elevation' : []} 
-    
-    
-    # calculate the distance along the profiles (same for all)
-    dist_cells = np.sqrt(((dataX[:,0] - dataX[0,0])**2.) + ((dataY[:,0] - dataY[0,0])**2.))
-    dist = dist_cells * resolution_DEM # SLDEM resolution
-    
-    # select only distances smaller than the median diameter
-    
+    # second try
     try:
-        idx = np.where(dist < (med_diam/2.0))
-        argmax = np.max(idx)
+    
+        # load X, Y, Z for all profiles for specific crater_id
+        filenameX = crater_id + "_cross_sectionsX.txt"
+        filenameY = crater_id + "_cross_sectionsY.txt"
+        filenameZ = crater_id + "_cross_sectionsZ.txt"
         
-        # set data in the newly created dictionnary
-        for i in range(n):
-            data_dict['cross_section'].append(i)  
-            data_dict['X'].append(dataX[:argmax+1,i])
-            data_dict['Y'].append(dataY[:argmax+1,i])
-            data_dict['elevation'].append(dataZ[:argmax+1,i])
+        (dataX, dataY, dataZ) = load3d(filenameX, filenameY, filenameZ)
         
-        # load dictionnary in pandas DataFrame   
-        data_pd = pd.DataFrame(data_dict)
+        # load the median diameter
+        filename_meddiam = crater_id + "_res.txt"
+    
+        tmp_data = np.loadtxt(filename_meddiam, delimiter=";", comments="#")
+        med_diam  = tmp_data[0]
         
-        nvalues = argmax + 1
-        nprof = np.shape(dataX)[1]
-        posit = np.ones((nvalues*nprof, 3))
+        # number of cross sections 
+        n = np.shape(dataX)[1]
         
-        # prepare the data so we have an array with X, Y, Z (positions)
-        for p in range(nprof):
-            for i in range(nvalues):
-                
-                #index
-                ind = (nvalues * p) + i
-                
-                posit[ind] = np.array([data_pd.X[p][i]*59.2252937999999,data_pd.Y[p][i]*59.2252937999999,data_pd.elevation[p][i]])
-                
-        # calculate the volume of the surface (result in m3)
-        vol = convex_hull_volume_bis(posit)
+        # transform it to a dictionnary
+        data_dict = {'cross_section' : [], 'X' : [], 'Y' : [], 'elevation' : []} 
         
+        
+        # calculate the distance along the profiles (same for all)
+        dist_cells = np.sqrt(((dataX[:,0] - dataX[0,0])**2.) + ((dataY[:,0] - dataY[0,0])**2.))
+        
+        # SLDEM resolution (does this take into account the sampling at half the SLDEM resolution?)
+        # the distance should only be half
+        # dist = dist_cells * (resolution_DEM/2.0)
+        dist = dist_cells * resolution_DEM 
+        
+        # select only distances smaller than the median diameter
+        
+        try:
+            idx = np.where(dist < (med_diam/2.0))
+            argmax = np.max(idx)
+            
+            # set data in the newly created dictionnary
+            for i in range(n):
+                data_dict['cross_section'].append(i)  
+                data_dict['X'].append(dataX[:argmax+1,i])
+                data_dict['Y'].append(dataY[:argmax+1,i])
+                data_dict['elevation'].append(dataZ[:argmax+1,i])
+            
+            # load dictionnary in pandas DataFrame   
+            data_pd = pd.DataFrame(data_dict)
+            
+            nvalues = argmax + 1
+            nprof = np.shape(dataX)[1]
+            posit = np.ones((nvalues*nprof, 3))
+            
+            # prepare the data so we have an array with X, Y, Z (positions)
+            for p in range(nprof):
+                for i in range(nvalues):
+                    
+                    #index
+                    ind = (nvalues * p) + i
+                    
+                    posit[ind] = np.array([data_pd.X[p][i]*resolution_DEM,data_pd.Y[p][i]*resolution_DEM,data_pd.elevation[p][i]])
+                    
+            # calculate the volume of the surface (result in m3)
+            vol = convex_hull_volume_bis(posit)
+            
+        except:
+            vol = np.nan
+            
     except:
         vol = np.nan
         
@@ -137,7 +147,7 @@ def crater_volume(pathdata, crater_id, resolution_DEM = 59.2252937999999):
 **************************************************************************************************
 '''
 
-def main(path, pathdata, filenamecrater):
+def main(path, pathdata, filenamecrater, resolution_DEM):
     
     '''
     Calculate the crater volume for all craters contained in the filenamecrater
@@ -160,7 +170,7 @@ def main(path, pathdata, filenamecrater):
     
         print (indf)
         
-        vol[indf]  = crater_volume(pathdata, filename)
+        vol[indf]  = crater_volume(pathdata, filename, resolution_DEM)
         
         
     # saveit to 

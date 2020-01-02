@@ -169,12 +169,14 @@ def loadfigures(pathascii, pathvis16R, pathxy, filename):
 **************************************************************************
 '''
 
-pathascii = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/ascii_16R/'
-pathvis16R = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/ascii_visible16R/'
-pathxy = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/double_detrending/data/'
+pathascii = r'/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/ascii_16R/'
+pathvis16R = r'/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/ascii_visible16R/'
+pathxy = r'/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/double_detrending/data/'
 
+
+#ixx = 101
 ixx = ixx + 1
-filename = 'cpcrater0'+ str(ixx)
+filename = 'cpcrater1'+ str(ixx).zfill(3)
 fig4 = loadfigures(pathascii, pathvis16R, pathxy, filename)
 
 cid = fig4.canvas.mpl_connect('button_press_event', onclick)

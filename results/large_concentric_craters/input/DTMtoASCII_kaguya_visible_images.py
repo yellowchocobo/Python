@@ -16,8 +16,7 @@ path_to_raster = "E:/Kaguya/ORTHOIMAGES/"
 # file to copy (locations of preliminary rims)
 #infile = "D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya/layers/database.gdb/CRATER_validation"
 
-#infile = "X:/Moon/ANALYSIS/COLDSPOTS/database/database2.gdb/coldspotsCopy"
-infile = "D:/FRESH_IMPACT_WERNER_2010/layers2.gdb/rayed_craters_UPD_NILS"
+infile = r"X:/Moon/Large_concentric_craters_201910/layers/database.gdb/CONCENTRIC_CRATER_CLASS1"
 
 # Set overwrite option
 arcpy.env.overwriteOutput = True
@@ -27,11 +26,10 @@ arcpy.CheckOutExtension("3D")
 arcpy.CheckOutExtension("Spatial")
 
 
-pathdab = r"D:/FRESH_IMPACT_WERNER_2010/layers2019.gdb/"
-#pathdab = r"D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/layers/database2.gdb/"
 
-#outASCII = "D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/ascii_visible16R/" #"D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya/ASCII/" # change
-outASCII = "D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/ascii_visible4R/"
+pathdab = r"X:/Moon/Large_concentric_craters_201910/layers/database.gdb/"
+
+outASCII = "X:/Moon/Large_concentric_craters_201910/ascii/kaguya_visible/" #"D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya/ASCII/" # change
 
 # define paths and workspace (I need to create the gdb at some points)
 env.workspace = env.scratchWorkspace = pathdab
@@ -198,8 +196,8 @@ with arcpy.da.UpdateCursor(infile, ["Diam_km", "CRATER_ID", "x_coord", "y_coord"
 #with arcpy.da.UpdateCursor(infile, ["Diameter", "CRATER_ID", "Lon", "Lat"]) as cursor:
     ix = 0
     for row in cursor:
-        a = 'crater' + str(int(ix)).zfill(4)
-        buffer_value = np.round((row[0]/2.) * 4.0, decimals=4) # changed to 8
+        a = 'cpcrater' + str(int(ix)).zfill(4)
+        buffer_value = np.round((row[0]/2.) * 8.0, decimals=4) # changed to 8
         b = str(buffer_value) + ' Kilometers'
         row[1] = a
         #row[1] = crater_id[ix]
@@ -244,9 +242,8 @@ arcpy.env.addOutputsToMap = 0
 '''
 **************************************************************************************************
 '''
-with arcpy.da.UpdateCursor("CENTERN", ["Shape@", "x_coord", "y_coord"]) as cursor:
 
-#with arcpy.da.UpdateCursor("CENTERN", ["Shape@", "Lon", "Lat"]) as cursor:
+with arcpy.da.UpdateCursor("CENTERN", ["Shape@", "x_coord", "y_coord"]) as cursor:
     ix = 0
     for row in cursor:
         
@@ -408,6 +405,7 @@ with arcpy.da.UpdateCursor("CENTERN", ["Shape@", "x_coord", "y_coord"]) as curso
                 arcpy.RasterToASCII_conversion(inRas, outASCII + crater_id[ix] + "_visible.asc")
                 
                 ix = ix + 1
+                
                 arcpy.Delete_management("dtm_clip")
                 arcpy.Delete_management("miniarea_square")
                 arcpy.Delete_management("miniarea_TMP")

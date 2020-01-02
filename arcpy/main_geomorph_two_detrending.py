@@ -12,9 +12,9 @@ import matplotlib.pyplot as plt
 import copy
 import pandas as pd
 
-sys.path.append('M:/Nils/Python/arcpy/')
+#sys.path.append('M:/Nils/Python/arcpy/')
 
-#sys.path.append('/uio/kant/geo-ceed-u1/nilscp/Nils/Python/arcpy/') 
+sys.path.append('/uio/kant/geo-ceed-u1/nilscp/Nils/Python/arcpy/') 
 import geomorphCraters as wk
 import calculate_volume as cv
 
@@ -48,7 +48,7 @@ def loadgis(path,filename):
 '''
 **************************************************************************
 '''
-def run1(path, filenameXY, filenamecrater, pathplot, pathdata, scaling_factor):
+def run1(path, filenameXY, filenamecrater, pathplot, pathdata, scaling_factor, centre_craters = ''):
     
     '''
     filenameXY = 'data.txt'
@@ -62,6 +62,16 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata, scaling_factor):
     
     dataXYD = np.loadtxt(filenameXY,delimiter=";",comments="#")
     crater_id = np.genfromtxt(filenamecrater,skip_header=1,dtype=str)
+    
+    # centre of craters
+    if centre_craters.endswith('.csv'):
+        ccrater = np.loadtxt(centre_craters,delimiter=",",comments="#")
+        xccrater = ccrater[:,0]
+        yccrater = ccrater[:,1]
+        flagccrater = ccrater[:,2]
+    else:
+        None                      
+                         
     diam0 = dataXYD[:,2]
     diam0 = diam0 * 1000. # comment for coldspots
     r0 = diam0 /2.
@@ -77,44 +87,289 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata, scaling_factor):
     idx_sort = np.argsort(size_of_asciis)
     crater_id_new = crater_id[idx_sort]
     r0_new = r0[idx_sort]
-        
+    
+    #crater_id_new = crater_id
+    #r0_new = r0
+    
     for indf, filename in enumerate(crater_id_new):
         
         print (indf)
         
         name_crater_txt = filename + 'XY.txt'
         
-        if os.path.isfile(pathdata + name_crater_txt):
+        
+        # if the flag is equal to 0 then let's do nothing
+        if filename == 'cpcrater0143':
             None
-        elif filename == 'cpcrater1045':
-            None            
-        elif filename == 'cpcrater1842':
+
+        elif filename == 'cpcrater0199':
             None
-        elif filename == 'cpcrater0327':
-            None    
-        elif filename == 'cpcrater0738':
-            None               
             
-#        elif filename == 'crater0601':
-#            None
-#            
-#        elif filename == 'crater0030':
-#            None
-#
-#        elif filename == 'crater0559':
-#            None
-#            
-#        elif filename == 'crater0081':
-#            None
-#            
-#        elif filename == 'crater0568':
-#            None
-#            
-#        elif filename == 'crater0545':
-#            None  
-#            
-#        elif filename == 'crater1346':
-#            None  
+        elif filename == 'cpcrater0288':
+            None
+            
+        elif filename == 'cpcrater0998':
+            None
+            
+        elif filename == 'cpcrater1315':
+            None    
+        elif filename == 'cpcrater1387':
+            None   
+        elif filename == 'cpcrater1562':
+            None
+        elif filename == 'cpcrater1875':
+            None
+        elif filename == 'cpcrater2005':
+            None  
+        elif filename == 'cpcrater2106':
+            None  
+        # if the file exists from a previous run, let's do nothing    
+        elif os.path.isfile(pathdata + name_crater_txt):
+            None
+        
+        elif (centre_craters.endswith('.csv')):
+            
+            if flagccrater[indf] == 0:
+                None
+                
+            else:
+                # should be good this way
+                data = pd.read_csv(path + filename + ".asc", delimiter=' ', skiprows=6).values
+                data2 = np.rot90(data)
+                data3 = np.rot90(data2)
+                data4 = (np.rot90(data3)) * scaling_factor #scaling factor # only for sldem
+                
+                del data
+                del data2
+                del data3
+                data = copy.deepcopy(data4) #multiplying factor of the elevation (not for kaguya, 0.5 for Kaguya + LOLA)
+                del data4
+                
+                #correspond to orgin in the lower-left corner and data[x,y] 
+                # with x = ncols, y = nrows !!! important
+                        
+                # the number of columns, rows and extent of the raster is read
+                (ncols, nrows, xllcorner, yllcorner, cellsize, NODATA_value) = wk.readheader(path,filename + ".asc")
+        
+                # take the minimum of ncols, nrows and ncols and nrows of data
+                nrowsd, ncolsd = np.shape(data)
+                ncolsnrows = np.min([ncols, nrows, ncolsd, nrowsd])
+                data = data[:ncolsnrows, :ncolsnrows]
+                
+                print (ncols, nrows, ncolsd, nrowsd)
+                
+                x = np.linspace(0,(ncolsnrows-1)*cellsize,ncolsnrows)
+                y = np.linspace(0,(ncolsnrows-1)*cellsize,ncolsnrows)
+                
+                xe = np.linspace(cellsize/2.0, (cellsize/2.0) + ((ncolsnrows-1)*cellsize), ncolsnrows)
+                ye = np.linspace(cellsize/2.0, (cellsize/2.0) + ((ncolsnrows-1)*cellsize), ncolsnrows)
+                
+                # create my own matrices for the plotting with pcolor or pcolormesh
+                xc = np.zeros_like(data)
+                yc = np.zeros_like(data)
+                xce = np.zeros_like(data)
+                yce = np.zeros_like(data)
+                
+                for i in range(ncolsnrows):
+                    xc[:,i] = x
+                    xce[:,i] = xe
+                    
+                for i in range(ncolsnrows):
+                    yc[i,:] = y
+                    yce[i,:] = ye
+                
+                # This need to be changed!
+                
+                ncenterx = np.int(np.round(xccrater[indf]/cellsize))
+                ncentery = np.int(np.round(yccrater[indf]/cellsize))
+                
+                #other places where ncenterx and ncentery is required 
+                x1, y1 = wk.xy_circle(1.0*r0_new[indf], xe[ncenterx], ye[ncentery]) # xe and ye are equals
+        
+                
+                # First detrending (a plane is fitted through the elevations taken at circles
+                # 2.0 and 3.0R from the center of the crater )
+                
+                stduse = True #use standard deviation removal
+                ndata = wk.detrending(xc, yc, r0_new[indf], cellsize, ncenterx, ncentery, data, stduse) # I think it's okay to use xc, yc here
+                                      
+                
+                # the Maximum elevation are selected a first time
+                first_run = True
+                mingrade = 0.05
+                minclust = 0.05
+                slen = 0.1
+                
+                (col_coord_ME, row_coord_ME, col_cells_ME, row_cells_ME, elev_ME, prof_ME) = (
+                 wk.rim(xc, yc, ncenterx, ncentery, ndata, r0_new[indf], 
+                        cellsize, slen, minclust, mingrade, first_run))
+                
+                # we get rid of the nan-values for the detrending
+                ixnan = np.where(np.isnan(col_coord_ME) == False)
+                
+                # Maximum elevations without NaNs
+                coldetrend = col_coord_ME[ixnan]
+                rowdetrend = row_coord_ME[ixnan]
+                elev4detrend = elev_ME[ixnan]
+                
+                # the second detrending through the selected maximum elevation points are done
+                stduse = False
+                Z2 = wk.linear3Ddetrending(coldetrend,rowdetrend,elev4detrend, xc, yc, stduse)
+                
+                #wk.detrending_rim
+                
+                # the detrended plane is substracted to the DEM
+                ndata2 = ndata - Z2
+                
+                # the first detrending has ben run so we change now the first_run flag to false
+                first_run = False
+                
+                # second run of the function rim
+                (col_coord_ME, row_coord_ME, col_cells_ME, row_cells_ME, elev_ME, prof_ME,
+                 col_coord_LE, row_coord_LE, col_cells_LE, row_cells_LE, elev_LE, prof_LE,
+                 col_coord_BS, row_coord_BS, col_cells_BS, row_cells_BS, elev_BS, prof_BS) = (
+                 wk.rim(xc, yc, ncenterx, ncentery, ndata2, r0_new[indf], 
+                        cellsize, slen, minclust, mingrade, first_run))
+                
+                
+                # takes only nonnan values from *BS data and merge it to local elevation data
+                ixfinite = np.where(np.isfinite(col_coord_BS) == True)
+                col_coord_BS = col_coord_BS[ixfinite] 
+                row_coord_BS = row_coord_BS[ixfinite] 
+                col_cells_BS = col_cells_BS[ixfinite] 
+                row_cells_BS = row_cells_BS[ixfinite] 
+                elev_BS = elev_BS[ixfinite] 
+                prof_BS = prof_BS[ixfinite] 
+                
+                use_break_in_slope = False
+                
+                if use_break_in_slope:
+                    # concatenate local maxima and slope change!
+                    colint = np.concatenate((col_coord_LE, col_coord_BS))
+                    rowint = np.concatenate((row_coord_LE, row_coord_BS))
+                    colmap = np.concatenate((col_cells_LE, col_cells_BS)) 
+                    rowmap = np.concatenate((row_cells_LE, row_cells_BS))
+                    elevint = np.concatenate((elev_LE, elev_BS))
+                    profint = np.concatenate((prof_LE, prof_BS))
+                
+                else:
+                    # or using only local maxima
+                    colint = col_coord_LE
+                    rowint = row_coord_LE
+                    colmap = col_cells_LE
+                    rowmap = row_cells_LE
+                    elevint = elev_LE
+                    profint = prof_LE
+                    
+                # Maximum allowed radial discontinuity Drad (I should convert these values in cells)
+                Drad = 0.1 * r0_new[indf]
+                
+                # Distance of interest (searching distance)
+                Dint = 0.05 * r0_new[indf]
+                
+                # Maximum angular discontinuity (avoid unnecessary large gap angle in the 
+                # data)
+                angle = 2.0 #(in degrees)
+                
+                stangle = [0,45,90,135,180,225,270,315]
+                
+                contloop = True
+                siftRedundant = True
+                kpstitch = False
+                
+                
+                OptRims, Omegas, gap, maxradf = wk.rim_composite(col_coord_ME, row_coord_ME, col_cells_ME,
+                                                              row_cells_ME, elev_ME, prof_ME,
+                                                              colint, rowint, colmap, rowmap, xc, yc, elevint, 
+                                                              profint, ncenterx, ncentery,
+                                                              angle, stangle, Drad, Dint, 
+                                                              contloop, siftRedundant, kpstitch)
+                
+                # we want to export the data as X, Y, Z
+                # find the best fit
+                for i in range(np.shape(OptRims)[0]):
+                    a = np.mean(maxradf[i]) + (0.5*Omegas[i])
+                    if i == 0:
+                        b = a
+                        c = i
+                    else:
+                        if a < b:
+                            b = a
+                            c = i
+                
+                
+                # I should get rid of the 0,0 counts and should not append it takes way too much time
+                
+                # temporary name
+                name_crater_png = filename + 'XY.png'
+                
+                #xarcout = np.append(xarcout, np.array(OptRims[c][0,:]) + xllcorner)
+                #yarcout = np.append(yarcout, np.array(OptRims[c][1,:]) + yllcorner)
+                
+                plt.ioff()
+                plt.figure()
+                plt.pcolormesh(xc, yc, ndata2)
+                plt.title(filename,fontsize=16)
+                plt.colorbar()
+                
+                xarcgis = np.array(OptRims[c][0,:])
+                xarcgis = xarcgis[np.nonzero(xarcgis)] 
+                
+                yarcgis = np.array(OptRims[c][1,:])
+                yarcgis = yarcgis[np.nonzero(yarcgis)]
+                
+                zarcgis = np.array(OptRims[c][2,:])
+                zarcgis = zarcgis[np.nonzero(yarcgis)]
+                
+                profgis = np.array(OptRims[c][3,:])
+                profgis = profgis[np.nonzero(yarcgis)]
+                
+                flaggis = np.array(OptRims[c][4,:])
+                flaggis = flaggis[np.nonzero(yarcgis)]
+                
+                #xarcgis = np.array(OptRims[c][0,:]) + xllcorner
+                #xarcgis = xarcgis[np.nonzero(xarcgis - xllcorner)] 
+                
+                #yarcgis = np.array(OptRims[c][1,:]) + yllcorner
+                #yarcgis = yarcgis[np.nonzero(yarcgis - yllcorner)]
+                
+                #zarcgis = np.array(OptRims[c][2,:])
+                #zarcgis = zarcgis[np.nonzero(yarcgis - yllcorner)]
+                
+                #profgis = np.array(OptRims[c][3,:])
+                #profgis = profgis[np.nonzero(yarcgis - yllcorner)]
+                
+                #flaggis = np.array(OptRims[c][4,:])
+                #flaggis = flaggis[np.nonzero(yarcgis - yllcorner)]
+                
+                #print np.shape(OptRims)
+                plt.plot(xarcgis,yarcgis,"ko")
+                plt.plot(x1,y1,"b")
+                
+                #fit a circle
+                xnewcenter, ynewcenter, rnew, residu = wk.leastsq_circle(xarcgis,yarcgis)
+                                           
+                #other places where ncenterx and ncentery is required (new calculation)
+                x1n, y1n = wk.xy_circle(1.0*rnew, xnewcenter, ynewcenter)
+                plt.plot(x1n,y1n,"r")
+                
+                
+                # save plot
+                plt.savefig(pathplot + name_crater_png,dpi=300)
+                plt.close()
+    
+                #export the data to a .csv file with ";"
+                #xarcgis = np.array(OptRims[c][0,:]) + xllcorner
+                #yarcgis = np.array(OptRims[c][1,:]) + yllcorner
+                #zarcgis = np.array(OptRims[c][2,:])
+                header_txt = 'X;Y;Z;prof;flag'
+                
+                arcout = np.column_stack((xarcgis, yarcgis, zarcgis, profgis, flaggis))
+                np.savetxt(pathdata + name_crater_txt, arcout, delimiter = ";", header=header_txt,fmt='%10.5f', comments='')
+                
+        
+        # in the case where centre_craters does not exist or flagcrater == 1 or 2
+        # run the whole thing
         else: 
         
             # should be good this way
@@ -162,7 +417,8 @@ def run1(path, filenameXY, filenamecrater, pathplot, pathdata, scaling_factor):
                 yc[i,:] = y
                 yce[i,:] = ye
             
-                    
+            # This need to be changed!
+            
             # middle of the dtm (this has to change!)
             ncentery = int(nrows/2) # changed
             ncenterx = int(ncols/2) # changed
@@ -490,6 +746,107 @@ def run2(path, path8R, filenameXY, filenamecrater, pathdata, scaling_factor):
         
         if os.path.isfile(pathdata + filename + '_res.txt'):
             None
+        
+        # added this part in case, we did not get any data for a crater
+        elif not os.path.isfile(pathdata + filename + 'XY.txt'):
+            unc_cse[indf] = np.nan
+            med_cse[indf] = np.nan
+            cse_25[indf] = np.nan
+            cse_75[indf] = np.nan
+            cse_min[indf] = np.nan
+            cse_max[indf] = np.nan
+            
+            unc_mcw[indf] = np.nan
+            med_mcw[indf] = np.nan
+            mcw_25[indf] = np.nan
+            mcw_75[indf] = np.nan
+            mcw_min[indf] = np.nan
+            mcw_max[indf] = np.nan
+            
+            unc_ucw[indf] = np.nan
+            med_ucw[indf] = np.nan
+            ucw_25[indf] = np.nan
+            ucw_75[indf] = np.nan
+            ucw_min[indf] = np.nan
+            ucw_max[indf] = np.nan
+            
+            unc_h[indf] = np.nan
+            med_h[indf] = np.nan
+            h_25[indf] = np.nan
+            h_75[indf] = np.nan
+            h_min[indf] = np.nan
+            h_max[indf] = np.nan
+            
+            unc_hr[indf] = np.nan
+            med_hr[indf] = np.nan
+            hr_25[indf] = np.nan
+            hr_75[indf] = np.nan
+            hr_min[indf] = np.nan
+            hr_max[indf] = np.nan
+            
+            depthf[indf] = np.nan
+            med_depth[indf] = np.nan
+            depth_25[indf] = np.nan
+            depth_75[indf] = np.nan
+            depth_min[indf] = np.nan
+            depth_max[indf] = np.nan
+            
+            diamf[indf] = np.nan
+            med_diam[indf] = np.nan
+            diam_25[indf] = np.nan
+            diam_75[indf] = np.nan
+            diam_min[indf] = np.nan
+            diam_max[indf] = np.nan
+            
+            ##
+            unc_rupcw[indf] = np.nan
+            med_rupcw[indf] = np.nan
+            rupcw_25[indf] = np.nan
+            rupcw_75[indf] = np.nan
+            rupcw_min[indf] = np.nan
+            rupcw_max[indf] = np.nan
+            
+            unc_rufrc[indf] = np.nan
+            med_rufrc[indf] = np.nan
+            rufrc_25[indf] = np.nan
+            rufrc_75[indf] = np.nan
+            rufrc_min[indf] = np.nan
+            rufrc_max[indf] = np.nan
+            
+            unc_lrs[indf] = np.nan
+            med_lrs[indf] = np.nan
+            lrs_25[indf] = np.nan
+            lrs_75[indf] = np.nan
+            lrs_min[indf] = np.nan
+            lrs_max[indf] = np.nan
+            
+            unc_urs[indf] = np.nan
+            med_urs[indf] = np.nan
+            urs_25[indf] = np.nan
+            urs_75[indf] = np.nan
+            urs_min[indf] = np.nan
+            urs_max[indf] = np.nan
+            
+            unc_fsa[indf] = np.nan
+            med_fsa[indf] = np.nan
+            fsa_25[indf] = np.nan
+            fsa_75[indf] = np.nan
+            fsa_min[indf] = np.nan
+            fsa_max[indf] = np.nan
+            
+            unc_crdl[indf] = np.nan
+            med_crdl[indf] = np.nan
+            crdl_25[indf] = np.nan
+            crdl_75[indf] = np.nan
+            crdl_min[indf] = np.nan
+            crdl_max[indf] = np.nan
+            
+            unc_frdl[indf] = np.nan
+            med_frdl[indf] = np.nan
+            frdl_25[indf] = np.nan
+            frdl_75[indf] = np.nan
+            frdl_min[indf] = np.nan
+            frdl_max[indf] = np.nan  
             
         else:
                   
@@ -982,8 +1339,9 @@ def mergedata(path,pathdata,filenamecrater):
     
     
     os.chdir(path)
-       
-    crater_id = np.genfromtxt(filenamecrater,skip_header=1,dtype=str)
+    
+    # be careful here for the first line
+    crater_id = np.genfromtxt(filenamecrater,comments="#",dtype=str)
     
     unc_cse = np.ones(len(crater_id))
     med_cse  = np.ones(len(crater_id))
@@ -1089,21 +1447,54 @@ def mergedata(path,pathdata,filenamecrater):
     
         name_crater_f = filename + '_res.txt'
         
-        (med_diam[indf], diamf[indf], diam_25[indf], diam_75[indf], diam_min[indf], diam_max[indf], 
-         med_depth[indf], depthf[indf], depth_25[indf], depth_75[indf], depth_min[indf], depth_max[indf], 
-         med_h[indf], unc_h[indf], h_25[indf], h_75[indf], h_min[indf], h_max[indf],
-         med_hr[indf], unc_hr[indf], hr_25[indf], hr_75[indf], hr_min[indf], hr_max[indf],
-         med_mcw[indf], unc_mcw[indf], mcw_25[indf], mcw_75[indf], mcw_min[indf], mcw_max[indf],
-         med_ucw[indf], unc_ucw[indf], ucw_25[indf], ucw_75[indf], ucw_min[indf], ucw_max[indf],
-         med_cse[indf], unc_cse[indf], cse_25[indf], cse_75[indf], cse_min[indf], cse_max[indf],
-         med_rupcw[indf], unc_rupcw[indf], rupcw_25[indf], rupcw_75[indf], rupcw_min[indf], rupcw_max[indf],
-         med_rufrc[indf], unc_rufrc[indf], rufrc_25[indf], rufrc_75[indf], rufrc_min[indf], rufrc_max[indf],
-         med_lrs[indf], unc_lrs[indf], lrs_25[indf], lrs_75[indf], lrs_min[indf], lrs_max[indf],
-         med_urs[indf], unc_urs[indf], urs_25[indf], urs_75[indf], urs_min[indf], urs_max[indf],
-         med_fsa[indf], unc_fsa[indf], fsa_25[indf], fsa_75[indf], fsa_min[indf], fsa_max[indf],
-         med_crdl[indf], unc_crdl[indf], crdl_25[indf], crdl_75[indf], crdl_min[indf], crdl_max[indf],
-         med_frdl[indf], unc_frdl[indf], frdl_25[indf], frdl_75[indf], frdl_min[indf], frdl_max[indf]) = np.loadtxt(pathdata + name_crater_f,delimiter=";", comments="#")
+        # work around use try and except
         
+        try:
+        
+            (med_diam[indf], diamf[indf], diam_25[indf], diam_75[indf], diam_min[indf], diam_max[indf], 
+             med_depth[indf], depthf[indf], depth_25[indf], depth_75[indf], depth_min[indf], depth_max[indf], 
+             med_h[indf], unc_h[indf], h_25[indf], h_75[indf], h_min[indf], h_max[indf],
+             med_hr[indf], unc_hr[indf], hr_25[indf], hr_75[indf], hr_min[indf], hr_max[indf],
+             med_mcw[indf], unc_mcw[indf], mcw_25[indf], mcw_75[indf], mcw_min[indf], mcw_max[indf],
+             med_ucw[indf], unc_ucw[indf], ucw_25[indf], ucw_75[indf], ucw_min[indf], ucw_max[indf],
+             med_cse[indf], unc_cse[indf], cse_25[indf], cse_75[indf], cse_min[indf], cse_max[indf],
+             med_rupcw[indf], unc_rupcw[indf], rupcw_25[indf], rupcw_75[indf], rupcw_min[indf], rupcw_max[indf],
+             med_rufrc[indf], unc_rufrc[indf], rufrc_25[indf], rufrc_75[indf], rufrc_min[indf], rufrc_max[indf],
+             med_lrs[indf], unc_lrs[indf], lrs_25[indf], lrs_75[indf], lrs_min[indf], lrs_max[indf],
+             med_urs[indf], unc_urs[indf], urs_25[indf], urs_75[indf], urs_min[indf], urs_max[indf],
+             med_fsa[indf], unc_fsa[indf], fsa_25[indf], fsa_75[indf], fsa_min[indf], fsa_max[indf],
+             med_crdl[indf], unc_crdl[indf], crdl_25[indf], crdl_75[indf], crdl_min[indf], crdl_max[indf],
+             med_frdl[indf], unc_frdl[indf], frdl_25[indf], frdl_75[indf], frdl_min[indf], frdl_max[indf]) = np.loadtxt(pathdata + name_crater_f,delimiter=";", comments="#")
+        except:
+            (med_diam[indf], diamf[indf], diam_25[indf], diam_75[indf], diam_min[indf], diam_max[indf], 
+             med_depth[indf], depthf[indf], depth_25[indf], depth_75[indf], depth_min[indf], depth_max[indf], 
+             med_h[indf], unc_h[indf], h_25[indf], h_75[indf], h_min[indf], h_max[indf],
+             med_hr[indf], unc_hr[indf], hr_25[indf], hr_75[indf], hr_min[indf], hr_max[indf],
+             med_mcw[indf], unc_mcw[indf], mcw_25[indf], mcw_75[indf], mcw_min[indf], mcw_max[indf],
+             med_ucw[indf], unc_ucw[indf], ucw_25[indf], ucw_75[indf], ucw_min[indf], ucw_max[indf],
+             med_cse[indf], unc_cse[indf], cse_25[indf], cse_75[indf], cse_min[indf], cse_max[indf],
+             med_rupcw[indf], unc_rupcw[indf], rupcw_25[indf], rupcw_75[indf], rupcw_min[indf], rupcw_max[indf],
+             med_rufrc[indf], unc_rufrc[indf], rufrc_25[indf], rufrc_75[indf], rufrc_min[indf], rufrc_max[indf],
+             med_lrs[indf], unc_lrs[indf], lrs_25[indf], lrs_75[indf], lrs_min[indf], lrs_max[indf],
+             med_urs[indf], unc_urs[indf], urs_25[indf], urs_75[indf], urs_min[indf], urs_max[indf],
+             med_fsa[indf], unc_fsa[indf], fsa_25[indf], fsa_75[indf], fsa_min[indf], fsa_max[indf],
+             med_crdl[indf], unc_crdl[indf], crdl_25[indf], crdl_75[indf], crdl_min[indf], crdl_max[indf],
+             med_frdl[indf], unc_frdl[indf], frdl_25[indf], frdl_75[indf], frdl_min[indf], frdl_max[indf]) = (
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, 
+             np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
+             
     return (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             med_depth, depthf, depth_25, depth_75, depth_min, depth_max, 
             med_h, unc_h, h_25, h_75, h_min, h_max,
@@ -1138,11 +1529,38 @@ def mergedata(path,pathdata,filenamecrater):
 #pathplot = 'D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya/double_detrending_few_changes/plots/'
 #pathdata = 'D:/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya/double_detrending_few_changes/data/'
 
-path = 'D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2015_LARGE_CRATERS/ascii/'
-path8R = 'D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2015_LARGE_CRATERS/ascii/'
-pathplot = 'D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2015_LARGE_CRATERS/double_detrending/plots/'
-pathdata = 'D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2015_LARGE_CRATERS/double_detrending/data/'
+#path = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/ascii8R/'
+#path8R = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/ascii8R/'
+#pathplot = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/double_detrending_4R8Rlast/plots/'
+#pathdata = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/double_detrending_4R8Rlast/data/'
+#scaling_factor = 1.0
+
+#path = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2015_LARGE_CRATERS/ascii/'
+#path8R = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2015_LARGE_CRATERS/ascii/'
+#pathplot = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2015_LARGE_CRATERS/double_detrending/plots/'
+#pathdata = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2015_LARGE_CRATERS/double_detrending/data/'
+#scaling_factor = 0.5
+
+
+#path = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya_092019/ascii/'
+#path8R = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya_092019/ascii/'
+#pathplot = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya_092019/double_detrending/plots/'
+#pathdata = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2013_Kaguya_092019/double_detrending/data/'
+#scaling_factor = 1.0
+
+path = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2015_Kaguya_LOLA_092019/ascii/'
+path8R = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2015_Kaguya_LOLA_092019/ascii/'
+pathplot = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2015_Kaguya_LOLA_092019/double_detrending/plots/'
+pathdata = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/VALIDATION/SLDEM2015_Kaguya_LOLA_092019/double_detrending/data/'
 scaling_factor = 0.5
+
+
+#path = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/ascii_16R/'
+#path8R = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/ascii_16R/'
+#pathplot = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/double_detrending/plots/'
+#pathdata = '/run/media/nilscp/pampa/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_COLDSPOTS/double_detrending/data/'
+#scaling_factor = 1.0
+#centre_craters = 'centre_crater.csv'
 
 #path = 'D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/ascii4R/'
 #path8R = 'D:/ANALYSIS/SIMPLECRATERS_MOON/SLDEM_2013_LARGE_CRATERS/ascii/'
@@ -1165,7 +1583,9 @@ ifnot_mkdir(pathplot)
 ifnot_mkdir(pathdata)
 
 # run step 1
-run1(path, filenameXY, filenamecrater, pathplot, pathdata, scaling_factor)
+#run1(path, filenameXY, filenamecrater, pathplot, pathdata, scaling_factor, centre_craters)
+run1(path8R, filenameXY, filenamecrater, pathplot, pathdata, scaling_factor)
+
 
 # run step 2
 (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
@@ -1185,6 +1605,19 @@ run1(path, filenameXY, filenamecrater, pathplot, pathdata, scaling_factor)
 
 
 ## load data 
+os.chdir(pathdata)
+#filenamec = glob.glob("cra*_res.txt")
+
+#filenamecup = []
+
+#for f in filenamec:
+#    filenamecup.append(f.split('_res.txt')[0])
+    
+#filenamecrater = path + 'crater_id_current.txt'
+
+#with open(filenamecrater, "w") as ff:
+#    for f in filenamecup:
+#        ff.writelines(f + "\n")
 
 (med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             med_depth, depthf, depth_25, depth_75, depth_min, depth_max, 
@@ -1200,6 +1633,8 @@ run1(path, filenameXY, filenamecrater, pathplot, pathdata, scaling_factor)
             med_fsa, unc_fsa, fsa_25, fsa_75, fsa_min, fsa_max,
             med_crdl, unc_crdl, crdl_25, crdl_75, crdl_min, crdl_max,
             med_frdl, unc_frdl, frdl_25, frdl_75, frdl_min, frdl_max) = mergedata(path,pathdata,filenamecrater)
+
+
 
 
 ## volume
@@ -1223,10 +1658,12 @@ header_txt = ('mdiam;udiam;diam25;diam75;diam_min;diam_max;' +
 
 dD = (med_h-med_depth) / med_diam
 
+resolution_DEM = 59.2252937999999
+#resolution_DEM = 7.4031617
 # calculate volume here
-vol = cv.main(path, pathdata, filenamecrater)
+vol = cv.main(path, pathdata, filenamecrater, resolution_DEM)
 
-name_crater_f = 'final_res2D.txt'
+name_crater_f = 'validation_SLDEM2015_September2019.txt'
             
 arc = np.column_stack((med_diam, diamf, diam_25, diam_75, diam_min, diam_max, 
             med_depth, depthf, depth_25, depth_75, depth_min, depth_max,  
