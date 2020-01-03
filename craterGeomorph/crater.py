@@ -859,9 +859,18 @@ def crossSection(model, step, id_mat = 0):
 def crossSection_atstep(path_jdata, path_tosave, idx, id_mat = 0):
     '''
     description:
+        extract elevation and distance points for a step in iSALE or for a
+        specific time (normalized to the transient crater time) and save it to 
+        the crossSection folder of this modelrun.
         
     param:
-        
+    : path_jdata (list) : list of absolute paths to jdata.dat files (i.e., models)
+    : path_tosave (str) : absolute path to the main plot folder
+    : idx : iSALE time step to save (if >= 0) or normalized time (norm to transient)
+      if equal to -1
+    : id_mat (int): material id in iSALE, 0 corresponds to all materials, if 
+      id_mat is different than 0 (e.g., id_mat = 1), only this material is
+      selected within the target. set to 0 as default.
 
     '''
     

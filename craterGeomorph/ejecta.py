@@ -61,23 +61,29 @@ import pySALEPlot as psp
 '''
 
 
-def loadej(pathdata, modelname):
+def loadej(path_tosave, modelname):
     '''
-    LOAD ALL THE DATA    
-
-    pathdata = '/work/nilscp/iSALE/isaleruns/data/ejecta/length/'
-    modelname = 'a4km'
-    (t_tr, da_tr, Da_tr, V_tr, h_tr, Dr_tr, Vr_tr, 
-            t, da, Da, V, h, Dr, Vr,
-            Ve, de, De,
-            X_tr, Y_tr, X, Y, Xe, Ye) = loaddata(pathdata, modelname)
+    description:
+    load txt file containing ejected parameters information based on path_tosave
+    and the modelname
+    
+    params:
+    : path_tosave (str): main plotting folder
+    : modelname (str) : modelname
+    
+    returns:
+    : tracer_idx (int): index of ejected lagrangian tracers
+    : ts (float): time of ejection (in s)
+    : v (float): ejection velocity (in m/s)
+    : angle (float): ejection angle (in degrees)
+    : xpos (float): ejection position (in meters)
+    : tair (float): time in the air (s)
+    : dland (float): landing position of ejected tracers (in meters)
+    : n (int): number of detected ejected tracers per timestep
     '''
 
-    #
-    os.chdir(pathdata + modelname + '/ejtracers/')
-
-    # (tracer_ix, ts, v, angle, xpos, tair, dland)  = np.loadtxt(modelname + '_ejtracers.txt',delimiter=';',comments='#')
-    data = np.loadtxt(modelname + '_ejtracers.txt',
+    data = np.loadtxt(path_tosave + modelname + '/ejtracers/' + 
+                      modelname + '_ejtracers.txt',
                       delimiter=';', comments='#')
 
     # extract the columns from the data
@@ -89,7 +95,8 @@ def loadej(pathdata, modelname):
     tair = data[:, 5]
     dland = data[:, 6]
 
-    n = np.loadtxt(modelname + '_ntracers.txt', delimiter='\t', comments='#')
+    n = np.loadtxt(path_tosave + modelname + '/ejtracers/' + 
+                   modelname + '_ntracers.txt', delimiter='\t', comments='#')
 
     return (tracer_ix, ts, v, angle, xpos, tair, dland, n)
 
@@ -102,29 +109,23 @@ def loadej(pathdata, modelname):
 def posTracer(model, method, threshold):
     '''
     description:
-    calculate the volume of the apparent crater diameter (from the pre-impact
-    surface, Va)
+    calculate the positions of ejected materials based on the threshold
+    (defined in terms of height)
 
-    inputs:
-    model: model output from psp
+    params:
+    model (iSALE model): model output from psp
     method: either use the 2-dot (method = 2) or 3-dot (method = 3) methods.
     Give slightly different results if two or three saved timesteps are used to 
     determine the impact velocity, and ejection angle.
+    threshold (float): in meters above the pre-impact surface
 
-    outputs:
-    xx : position of detected tracers (x) - (when they are first detected)
-    yy : position of detected tracers (y) - (when they are first detected)
-    tracer_idx : id number of the detected tracers 
+    returns:
+    xx (float) : positions of detected tracers (x) - (either 2 or 3 positions)
+    yy (float): positions of detected tracers (y) - (either 2 or 3 positions)
+    tracer_idx : tracer_idx (int) : index of ejected materials (lagrangian tracer indexs)
     timestep : saved timestep when tracers are first detected
     dt : time increment (saved timestep)
     n : number detected tracers each saved timestep
-
-    example:
-    model = ......................
-    method = 2
-    threshold = (model.cppr[0]*model.dx) * 0.01
-    X, Y, ix, ts, dt, n = posTracer(model,method, threshold)
-
     '''
 
     # start time to calculate the time it takes to run the script
@@ -152,15 +153,8 @@ def posTracer(model, method, threshold):
             ''' find in step1 and step2 values above pre-impact surface 
             (tracers from the projectile are also selected)'''
 
-            # we only select materials ejected above a height equal to the diameter of the projectile (before)
-            #threshold = 2*model.dx*20.
-
-            # we only select materials ejected above a height equal to 10% of the radius of the projectile
-            #threshold = (model.cppr[0]*model.dx) * 0.01
-
             # select where tracer heights are higher than the diameter of the
             # projectile (needs to fill this criteria for the three saved timesteps)
-            #ix = np.where((step1.ymark >threshold) & (step2.ymark >threshold) & (step3.ymark >threshold))[0]
             ix = np.where((step1.ymark > threshold) & (step2.ymark > threshold) & (step3.ymark > threshold)
                           & (step3.ymark > step2.ymark) & (step2.ymark > step1.ymark))[0]
 
@@ -225,6 +219,11 @@ def linearfit(x, a, b):
     '''
     description:
     linear fit
+    
+    param:
+    : x (1D-array): values
+    : a (float) : Slope of linear equation
+    : b (float): Intercept of linear equation
     '''
 
     return a*x + b
@@ -235,24 +234,23 @@ def linearfit(x, a, b):
 '''
 
 
-def parameters(x, y, tracer_idx, model, method, dt):
+def parameters(x, y, tracer_idx , method, dt):
     '''
     description:
-    calculate the ejection velocity, angle and position where the material was
-    ejected from
+    calculate the ejection velocity, angle and position based on either the two
+    or three positions (one before and one or two positions above the treshold)
 
-    inputs:
-    imputs are from the function posTracer
-    x, y, tracer_idx, model, dt
-
-    outputs:
-    v: ejection velocity
-    angle: ejection angle
-    xpos: position where the material is ejected from
-
-    example:
-    v, angle, xpos = parameters(x,y,tracer_idx,model,dt)
-
+    param:
+    : x (float): positions of detected tracers (x) - (either 2 or 3 positions)
+    : y (float): positions of detected tracers (y) - (either 2 or 3 positions)
+    : tracer_idx (int) : index of ejected materials (lagrangian tracer indexs)
+    : method (int) : 2 or 3 (two or three-dot methods)
+    : dt : timestep (in absolute time in seconds)
+        
+    returns:
+    : v (float): ejection velocity (in m/s)
+    : angle (float): ejection angle (in degrees)
+    : xpos (float): ejection position (in meters)
     '''
 
     # start the time at which the script has been started
@@ -318,6 +316,13 @@ def wrap(model, method, thresholdf, g):
     description:
     get the extent of how much of the materials get excavated during crater evolution
     The volume,  depth and diameter of excavated materials are calculated
+    
+    params:
+    : model (iSALE model) :
+    : method (int): selection of two- (method = 2) or three-dot (3) methods
+    : thresholdf (float): threshold value (which is multiplied by the CPPR x cellsize)
+    : g (float): surface gravity
+        
 
     inputs:
     imputs are from the function posTracer and parameters
@@ -337,7 +342,7 @@ def wrap(model, method, thresholdf, g):
     '''
     threshold = (model.cppr[0]*model.dx) * thresholdf
     x, y, tracer_idx, timesteps, dt, n = posTracer(model, method, threshold)
-    v, angle, xpos = parameters(x, y, tracer_idx, model, method, dt)
+    v, angle, xpos = parameters(x, y, tracer_idx, method, dt)
     tracer_idx = tracer_idx.astype(int)
     step = model.readStep(['Den', 'TrP'], 0)
     stepend = model.readStep(['Den', 'TrP'], model.nsteps-1)
@@ -354,7 +359,7 @@ def wrap(model, method, thresholdf, g):
 '''
 
 
-def main(path, folders, paths, method, thresholdf, g):
+def main(path_jdata, path_tosave, method, thresholdf, g):
     '''
     description:
     loading of the data + all calculation in the function wrap
@@ -379,26 +384,28 @@ def main(path, folders, paths, method, thresholdf, g):
     name : modelname + '_tracersXY_contour_excavated.txt'
     '''
 
-    # Change path to working directory
-    os.chdir(path)
+    # In case only a single model is specified, transform string to list of strings
+    if type(path_jdata) == str:
+        path_jdata = [path_jdata]        
+    else:
+        None
 
-    # select folders in directory
-    #folders = glob.glob(search)
 
-    for modelname in folders:
-
-        patht = path + modelname
-        os.chdir(patht)
+    for jdata_folder in path_jdata:
 
         # print modelname
-        print modelname
+        modelname = jdata_folder.split('/')[-2]
+        print (modelname)
+        
+        # open model with pySALEplot
+        jdata = os.path.join(jdata_folder, 'jdata.dat')
+        model = psp.opendatfile(jdata)
 
-        model = psp.opendatfile('jdata.dat')
         (Ve, de, Re, X, Y, Xc, Yc, timesteps, tracer_idx, n, v, angle, xpos,
          tair, xland) = wrap(model, method, thresholdf, g)
 
         # create plots directory
-        path_data = paths + modelname + "/excavated/"
+        path_data = path_tosave + modelname + "/excavated/"
 
         if not os.path.exists(path_data):
             os.makedirs(path_data)
@@ -429,7 +436,7 @@ def main(path, folders, paths, method, thresholdf, g):
                    delimiter=';', fmt=['%1.6e', '%1.6e'])
 
         # tracers
-        path_ej = paths + modelname + "/ejtracers/"
+        path_ej = path_tosave + modelname + "/ejtracers/"
 
         if not os.path.exists(path_ej):
             os.makedirs(path_ej)
