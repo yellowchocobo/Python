@@ -33,21 +33,18 @@ import numpy as np
 import os
 import sys
 import matplotlib.pyplot as plt
-import os
-from pylab import arange
 from matplotlib import rc
 import matplotlib.gridspec as gridspec
-import copy
 import glob
 
 
-pathm = ['/work/nilscp/Python/prog/clean', '/work/nilscp/iSALE/Dellen/lib']
+pathm = ['/uio/kant/geo-ceed-u1/nilscp/Nils/Python/craterGeomorph', 
+         '/work/nilscp/iSALE/Dellen/lib']
 
 for pat in pathm:
     sys.path.append(pat)
 
 import pySALEPlot as psp
-import crater as cr
 import subprocess
 '''
 ***********************************************************************

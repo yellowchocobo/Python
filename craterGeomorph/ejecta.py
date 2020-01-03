@@ -1,44 +1,4 @@
 # -*- coding: utf-8 -*-
-'''
-******************************************************************************
-
-     =========================================================================
-     Subroutine to calculate the excavated materials, and excavated crater
-     dimensions, ejection angles, velocity and position (and ejecta thickness
-     in the future)
-
-
-     Description                                     Programmer    Date
-     ------------------------------------------------------------------
-     Original version (1.0).............................NCP  2017/08/XX
-     Improved version (2.0)   ..........................NCP  2017/22/11   
-    ==========================================================================
-    
-    The version 2.0 includes:
-    - a better description of functions
-    - changed the name of some function (except main and craterdimensions)
-    - functions:
-    
-    posTracer: calculate the position of tracers that are ejected at two or
-    three different timesteps
-    
-    parameters: calculate the ejection velocity, angle and position where it
-    got ejected
-    
-    wrap: calculate both the dimensions and other parameters related to ejected materials
-    main: save data to three different text files
-    ballistic: calculate the ballistic trajectories from the position where
-    it got ejected (need to be updated)
-    
-    excavation: calculate excavated parameters (depth, diameter and volume)
-    excavationProfile: calculate the excavated cavity (position of tracers and hinge stream line)
-    linearfit: linear fit
-    parabolafit: parabola fit
-    
-    ==========================================================================
-
-******************************************************************************
-'''
 
 # Import basic Python modules
 import numpy as np
@@ -321,24 +281,18 @@ def wrap(model, method, thresholdf, g):
     : model (iSALE model) :
     : method (int): selection of two- (method = 2) or three-dot (3) methods
     : thresholdf (float): threshold value (which is multiplied by the CPPR x cellsize)
-    : g (float): surface gravity
+    : g (float): surface gravity of the planetary body (m2/s)
         
 
-    inputs:
-    imputs are from the function posTracer and parameters
-
-    outputs:
-    Ve: volume of excavated material
-    de: maximum depth of excavated material
-    De: diameter of excavated material
-    X: original position of ejected materials (x)
-    Y: original position of ejected materials (y)
-    Xc: boundary hinge streamline (x)
-    Yc: boundary hinge streamline (y)
-    timesteps: timesteps when the materials are ejected
-
-    example:
-    wrap(model,method)
+    returns:
+    : Ve (float) : volume of excavated material
+    : de (float) : maximum depth of excavated material
+    : De (float) : diameter of excavated material
+    : X (float) : original position of ejected materials (x)
+    : Y (float) : original position of ejected materials (y)
+    : Xc (float) : boundary hinge streamline (x)
+    : Yc (float) : boundary hinge streamline (y)
+    : timesteps (float) : timesteps when the materials are ejected
     '''
     threshold = (model.cppr[0]*model.dx) * thresholdf
     x, y, tracer_idx, timesteps, dt, n = posTracer(model, method, threshold)
@@ -363,14 +317,15 @@ def main(path_jdata, path_tosave, method, thresholdf, g):
     '''
     description:
     loading of the data + all calculation in the function wrap
-
-    inputs:
-    path: directory contaning all the models
-    folders: folders containing all the models
-    paths: saving directory
-    method: 2 or 3 dots
-
-    outputs:
+    
+    params:
+    : path_jdata (list) :
+    : path_tosave (str) :
+    : method (int) :
+    : thresholdf (float) :
+    : g (float) :
+        
+    returns:
     Three .txt files are saved:
 
     one text file that contains the depth, diameter and volume of the excavated

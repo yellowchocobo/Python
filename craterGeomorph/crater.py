@@ -951,3 +951,46 @@ def crossSection_atstep(path_jdata, path_tosave, idx, id_mat = 0):
 
 
     print ("crater profiles have been saved")
+    
+'''
+***********************************************************************
+'''
+
+def step(jdata, nDT_SAVE, norm=False):
+    
+    '''
+    returns the step corresponding to the wished saved timestep. 
+    This function is quite pratical if you want to work with a specific timestep
+    in for example jupyter
+    
+    params:
+    : jdata (str):
+    : nDT_SAVE (int): 
+        
+    Should have a normalization by the transient crater time option 
+    (if path_tosave is specified and the transient crater has been calculated)
+    then it is pretty straightforward ....
+    '''
+    
+    model = psp.opendatfile(jdata)
+    
+    # if we want to get normalized data
+    if norm:
+        None
+              
+    # load all the data available (except V_ and tracers)
+    fieldiSALE = []
+    
+    for f, f2 in model.fieldlist:
+        if not ((f.startswith('V_')) or (f.startswith('Tr'))):
+            fieldiSALE.append(f)
+            
+    step = model.readStep(fieldiSALE, nDT_SAVE)
+    
+    return (model, step)
+    
+    
+    
+    
+    
+    
