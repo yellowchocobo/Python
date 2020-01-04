@@ -413,105 +413,61 @@ def morphology(path1, paths, norm, normpath, timei, showtransient, showhline, lb
 ***********************************************************************
 '''
 
-
-def zoom(zoom_id, norm, mod, rrim, manualx, manualy):
+def zoom(model, zoom_level, scaling_factor):
+    
     '''
-    example:
-    zoom_id = 'hires' # 'close'; 'mid', 'hires'; 'all'
-    norm = 2
-    rrim = rinner1
-    manualx = ((0,1500.)) # if norm not equal to 0 then it has to be in normalized distance!
-    manualy = ((-1000., 500.)) # if norm not equal to 0 then it has to be in normalized distance!
-    extentx, extenty = zoom(zoom_id, norm, mod1, rrim, manualx, manualy)
-    
-    added manual opportunity?
-    
-    if manual_entry
-    '''
-    
-    # create empty arrays
-    extentx = []
-    extenty = []
-
-    zid = np.array(['close', 'mid', 'hires', 'all', 'manual'])
-    
-    
-    for z in zoom_id:
-
-        idx = np.where(zid == z)[0][0]
-    
-        if norm == 0:
-            if idx == 0:
-                extentx.append((0.0, 1.2*rrim))
-                extenty.append((-0.8*rrim, 0.8*rrim))
-    
-            elif idx == 1:
-                extentx.append((0.0, 2.0*rrim))
-                extenty.append((-2.0*rrim, 0.8*rrim))
-    
-            elif idx == 2:
-                extentx.append((0.0, mod.xhires[1]))
-                extenty.append((mod.yhires[0], mod.yhires[1]))
-                
-            elif idx == 4:
-                extentx.append(manualx)
-                extenty.append(manualy)
-    
-            else:
-                extentx.append((0.0, np.max(mod.xc)))
-                extenty.append((np.min(mod.yc), np.max(mod.yc)))
-    
-        else:
-            if idx == 0:
-                extentx.append((0.0, 1.2))
-                extenty.append((-0.8, 0.8))
-    
-            elif idx == 1:
-                extentx.append((0.0, 2.0))
-                extenty.append((-2.0, 0.8))
-    
-            elif idx == 2:
-                extentx.append((0.0, mod.xhires[1]/rrim))
-                extenty.append((mod.yhires[0]/rrim, mod.yhires[1]/rrim))
-                
-            elif idx == 4:
-                extentx.append(manualx)
-                extenty.append(manualy)
-    
-            else:
-                extentx.append((0.0, np.max(mod.xc)/rrim))
-                extenty.append((np.min(mod.yc)/rrim, np.max(mod.yc)/rrim))
+    description:
         
-    ix_to_delete = []        
-    for iy, y in enumerate(extenty):
-        if np.isnan(extenty[iy][1]):
-            ix_to_delete.append(iy)
-                
-    if len(ix_to_delete) > 0:
-        zoom_id_up = np.delete(zoom_id, ix_to_delete)
+    params:
+        
+    returns:
+    extentx
+    extenty
+    
+    
+    '''
+    # in case for 
+    if type(zoom_level) == tuple:
+        if zoom_level[0][1] > 0:
+            extentx = zoom_level[0]
+            extenty = zoom_level[1]
+        else:
+            extentx = (0.0, np.abs(zoom_level[0][1]) * scaling_factor)
             
-        bb = np.array(range(len(zoom_id)))
-        aa = np.array(ix_to_delete)
-        cc = np.setdiff1d(bb,aa)
+            # first is negative
+            extenty = (zoom_level[1][0] * scaling_factor, 
+                       np.abs(zoom_level[1][1]) * scaling_factor)
             
-        extentxup = []
-        extentyup = []
+    elif type(zoom_level) == str:
+        
+        if zoom_level == 'complete_grid':
+            extentx = (0.0, np.max(model.x) / scaling_factor)
             
-        for c in cc:
-            extentxup.append(extentx[c])
-            extentyup.append(extenty[c])
-                
-    else:
-        extentxup = extentx
-        extentyup = extenty
-        zoom_id_up = zoom_id
+        elif zoom_level == 'hires_grid':
+            extentx = (0.0, model.xhires[1] / scaling_factor)
+            extenty = (model.yhires[0]/ scaling_factor, model.yhires[1] / scaling_factor)
             
-    return extentxup, extentyup, zoom_id_up
-
-
+        elif zoom_level == 'medium':
+            extentx = (0.0, (model.xhires[1] / scaling_factor) / 2.0)
+            extenty = ((model.yhires[0]/2.0) / scaling_factor, model.yhires[1] / scaling_factor)
+            
+        elif zoom_level == 'close_up':
+            extentx = (0.0, (model.xhires[1] / scaling_factor) / 4.0)
+            extenty = ((model.yhires[0]/4.0) / scaling_factor, model.yhires[1]/ scaling_factor)
+        
+        else:
+            print ("zoom level not recognized. Please choose from complete grid"
+                   ", hires_grid, medium, close_up or specify values as tuple")
+            
+            
+    return ((extentx, extenty))
+    
+    
 '''
 ***********************************************************************
 '''
+
+
 
 
 def field_definition(model, zoom_id, paths, param = 'all'):
@@ -632,86 +588,407 @@ def truncate(n, decimals=0):
     multiplier = 10 ** float(decimals)
     return int(n * multiplier) / multiplier
 
+   
 '''
 ***********************************************************************
 '''
 
-def vmin_vmax(path1, mod1, fld_param, fld_factor, param):
+def getTransientvalues(path_tosave, modelname):
     
     '''
-    Problem with the total plastic strain and the acoustic fluidization strength
+    description:
     
+    param:
+    :path_tosave (str):
+    : modelname (str):
+        
+    returns:
+    : tr_time : transient crater time
+    : tr_depth : transient crater depth (along the axis of symmetry)
+    : tr_mdepth : transient crater maximum depth (across the whole cross section)
+    : tr_diameter : transient crater diameter
+    : tr_vol : transient crater volume
+    : tr_alt : altitude of the transient rim
+    : tr_Drim: rim-to-rim transient diameter
+    : tr_Vrim : rim-to-rim transient volume
+    : tr_idx : timestep at which the transient crater is reached
     '''
     
+    try:
+        data = np.loadtxt(path_tosave + modelname + '/transient/' + 
+                          modelname + '_tr.txt',
+                          delimiter='\t', comments='#')
+                    
+        return (data)
     
-    # change to directory
-    os.chdir(path1)
-    
-    # empty list
-    vminlst = []
-    vmaxlst = []
+    except:
         
-    # read step only one time
-    step = mod1.readStep(fld_param, 1)
-    
-    
-    for ifld, fld in enumerate(fld_param):
-        
-        if fld.startswith('Cm'):       
-            vminlst.append(0.0)
-            vmaxlst.append(1.0)
-            
-        elif fld.startswith('Al'):
-            vminlst.append(1.00)
-            vmaxlst.append(1.25)
-            
-        elif fld.startswith('Da'):
-            vminlst.append(0.0)
-            vmaxlst.append(1.0)
-            
-        elif fld.startswith('TP'):
-            vminlst.append(1e-5)
-            vmaxlst.append(1.0)
-            
-        elif fld.startswith('Pr'):
-            vminlst.append(0.0)
-            vmaxlst.append(1.0)
-            
-        elif fld.startswith('Yl'):
-            vminlst.append(0.0)
-            vmaxlst.append(1.0) 
+        if os.path.isdir(path_tosave + modelname):
+            print ("transient crater dimensions have not yet been calculated")
         else:
+            print ("modelname does not exists")
+                          
+'''
+***********************************************************************
+'''            
+    
+def getvalues(path_tosave, modelname, step):
+    
+    '''
+    description:
+    
+    param:
+    :path_tosave (str):
+    : modelname (str):
+    : step (int): if negative, normalized to the transient crater time
+    
+    returns:
+    : time : absolute time (since impact)
+    : time_norm : normalized time (by transient crater time)
+    : depth : crater depth (along the axis of symmetry)
+    : mdepth : crater maximum depth (across the whole cross section)
+    : diameter : crater diameter at the pre-impact surface
+    : volume : crater volume at the pre-impact surface
+    : empty : Number of void cells within the apparent crater
+    : pf : Number of partially filled cells within the apparent crater
+    : cf : Number of completely filled cells within the apparent crater
+    : alt : Altitude of the crater rim
+    : DRim : Diameter of the crater rim
+    : Vrim : Volume of the crater rim
+
+    '''
+    
+    try:
+        data = np.loadtxt(path_tosave + modelname + '/evolution/' + 
+                          modelname + '_data.txt',
+                          delimiter='\t', comments='#')
+        
+        if step < 0:
             
-            # could I automatically find vmiin and vmaax
-            ixfld = np.where(step.cmc[0] >= 0.5) # at least contain 50% of material
+            # load normalized time
+            tnorm = data[:,1]
             
-            # automatically find vmin and vmax
-            vminlst.append(0.0)
-            vmaax = np.percentile(step.data[ifld][ixfld]/fld_factor[ifld], 70)
+            # should have something that check whether it is a close value or not
+            # get the closest value to the specified step
+            __, tstep = find_nearest(tnorm, np.abs(step))
+            
+        else:
+            tstep = np.int(step)
+            
+        return (data[tstep, :])
+            
+    except:
+        
+        if os.path.isdir(path_tosave + modelname):
+            print ("crater dimensions have not yet been calculated")
+        else:
+            print ("modelname does not exists")
+            
+'''
+***********************************************************************
+''' 
+
+def normalize(jdata, model, path_tosave, norm, norm_tend):
+    
+    '''
+    '''
+    
+    
+    # modelname
+    modelname = jdata.split('/')[-2]
+    
+    # loading of the scaling factor   
+    if norm == 0:
+        scaling_factor = 1.0
+                
+    # normalized by the radius of the projectile
+    elif norm == 1:
+        scaling_factor = model.cppr[0] * model.dx
+    
+    # normalized by the apparent transient crater diameter     
+    elif norm == 2:
+        scaling_factor = getTransientvalues(path_tosave, modelname)[3]
+        
+    # normalized by the final rim-to-rim crater diameter     
+    elif norm == 3:
+        scaling_factor = getTransientvalues(path_tosave, modelname, norm_tend)[-2]
+        
+    # normalized by the final rim-to-rim crater diameter of another crater
+    else:
+        try:
+            scaling_factor = getTransientvalues(path_tosave, norm.split('/')[-2], norm_tend)[-2]
+        except:
+            print ("modelname does not exist")
             
             
-            # rounding 
-            if vmaax >= 1000.:
-                vmaaxg = truncate(vmaax, -2)
-            elif ((vmaax >= 10.) & (vmaax < 1000.)):
-                vmaaxg = truncate(vmaax, -1)
-            elif ((vmaax >= 0.1) & (vmaax < 10.)):
-                vmaaxg = truncate(vmaax, 1)
-            else:
-                vmaaxg = truncate(vmaax, 3)
-            
-            # if somehow the rounding does not work then just use 1
-            if vmaaxg == 0.0:
-                vmaxlst.append(1.0)
-            else:
-                vmaxlst.append(vmaaxg)
-            
-    return (vminlst, vmaxlst)
+    return (scaling_factor)
+    
+
+'''
+***********************************************************************
+''' 
+
+def getTransientcrossSection(path_tosave, modelname):
+    
+    '''
+    In case for showTransient
+    '''
+    
+    None
+
+
+'''
+***********************************************************************
+'''
+
+def time_lbl(path_tosave, modelname, time, norm):
+    
+    '''
+    Need to modify this part if you don't want to plot the time and norm time
+    '''
+    
+    tr_time = getTransientvalues(path_tosave, modelname)[0]
+    tr_idx = np.int(getTransientvalues(path_tosave, modelname)[-1])
+    
+    lbl_time = (r"$\mathit{t} = " + "{:.2f}".format(time) + " " + " s, $" + " " +
+                              "$\zeta$ = " + "{:.2f}".format(time/tr_time))
+    
+    
+    return (tr_idx, lbl_time)
+    
+    
     
 '''
 ***********************************************************************
 '''
 
+def figurename(jdata, path_tosave, step, param, norm, zoom_level):
+    
+    '''
+    description:
+        give a figurename based on modelname, parameter and type of normalization
+        
+        
+    ppp_nnnnn_Zzzz_xxx.jpg 
+
+    ppp : parameter (DEN, TMP .....)
+    nnnnn : type of normalization (TRANS, RPROJ, NORMA, FINAL, FINCO)
+    zzzzz : type of zoom (COMPL, HIRES, MIDDL, CLOSE, MANUA)
+    xxx : timestep
+    
+    DEN_TRANS_HIRES_000.png
+    
+    In evolution/plots/parameter
+    
+    params:
+    : jdata :
+    : path_tosave :
+    : param :
+    : norm :
+    '''
+    
+    # modelname
+    modelname = jdata.split('/')[-2]
+    
+    # parameter name
+    P = param.upper()
+    
+    # step
+    S = str(step).zfill(3)
+    
+    # normalization name
+    if norm == 0:
+        N = "NORMA"                
+    elif norm == 1:
+        N = "RPROJ" 
+    elif norm == 2:
+        N = "TRANS" 
+    elif norm == 3:
+        N = "FINAL"        
+    else:
+        N = "FINCO"
+        
+    # zoom name
+    if type(zoom_level) == tuple:
+        Z = "MANUA"
+           
+    elif type(zoom_level) == str:
+        
+        if zoom_level == 'complete_grid':
+            Z = "COMPL"            
+        elif zoom_level == 'hires_grid':
+            Z = "HIRES"           
+        elif zoom_level == 'medium':
+            Z = "MIDDL"                  
+        elif zoom_level == 'close_up':
+            Z = "CLOSE"           
+   
+
+    dirname = os.path.join(path_tosave,
+                           modelname,
+                           'evolution',
+                           'plots', P)
+    
+    # create if non-existing
+    if os.path.isdir(dirname):
+        None
+    else:
+        os.makedirs(dirname)
+                           
+    figname = os.path.join(dirname, 
+                           modelname + "_" + P + "_" + N + "_Z" + Z + "_" + S + ".png") 
+    
+    return (figname)
+           
+'''
+***********************************************************************
+''' 
+
+def crater(jdata, path_tosave, steps, params, norm, zoom_level, vmin, vmax, title_lbl,
+           x_lbl, y_lbl,
+           colormap, colormap_lbl, param_unit_factor = 1.0, 
+           showhline = False, showTransient = False, showSurface = False, 
+           norm_tend = -5.0):
+    
+    '''
+    Important!
+    vmin has to take several inputs
+    vmax as well
+    title_lbl as well
+    colormap
+    colormap_lbl
+    param_unit_factor
+    
+    param:
+    : jdata (str):
+    : path_tosave (str):
+    : steps (int):
+    : param (list of str): ['Den', 'Tmp']
+    : norm (str or float): if str specify jdata path
+    : zoom (str or float):
+    : vmin (float):
+    : vmax (float):
+    : lbl (str):
+    : showhline (flag):
+    : showTransient (flag):
+    : showSurface (flag):
+        
+    returns:
+    plot(s) in path_tosave
+    
+    
+    example:
+    jdata = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/structuralUplift/SHROEDINGER_CRUST_20km/jdata.dat'
+    path_tosave = '/uio/kant/geo-ceed-u1/nilscp/Desktop/astra/iSALE/structuralUplift/'
+    steps = -1
+    params = ['Den', ]
+    norm = 1
+    zoom_level = 'medium'
+    vmin = 0
+    vmax = 3000
+    title_lbl = 'Shroedinger (T = 40 km), density'
+    x_lbl = 'x'
+    y_lbl = 'y'
+    colormap = 'viridis'
+    showhline = True
+    showTransient = True
+    showSurface = True
+    colormap_lbl = 'kg/m^{3}'
+    crater(jdata, path_tosave, steps, params, norm, zoom_level, vmin, vmax, title_lbl,
+           x_lbl, y_lbl, colormap, colormap_lbl, 1.0, showhline, showTransient, showSurface)
+    '''
+    
+    # figures does not pop up
+    plt.ioff()
+    
+    # open jdata
+    model = psp.opendatfile(jdata)
+    
+    # modelname
+    modelname = jdata.split('/')[-2]
+    
+    # get scaling factor based on if it will be normalized or not
+    scaling_factor = normalize(jdata, model, path_tosave, norm, norm_tend)
+       
+    # get extent
+    extentx, extenty = zoom(model, zoom_level, scaling_factor)
+    
+    # should load the data to 
+    
+    # managing values for steps
+    if steps == -1:
+        steps = range(model.nsteps)
+    elif type(steps) == int:
+        steps = [steps]
+    else:
+        None
+    
+    for i in steps:
+            step = model.readStep(params, i)  
+            t1 = step.time
+            
+            for iparam, param in enumerate(params):
+                
+                # get figurename based on the different selected parameters
+                figname = figurename(jdata, path_tosave, i, param, norm, zoom_level)
+                
+                # set time label
+                idx_tr, t_lbl = time_lbl(path_tosave, modelname, t1, norm)
+            
+                fig = plt.figure(figsize=(6, 6))
+                ax1 = fig.add_subplot(111)
+                
+                # plot data
+                cax = ax1.pcolormesh(model.x/scaling_factor, model.y/scaling_factor, step.data[iparam]/param_unit_factor,
+                                         vmin=vmin,
+                                         vmax=vmax,
+                                         cmap=colormap, zorder=2)
+                
+                # showing surface
+                if showSurface:
+                    ax1.contour(model.xc/scaling_factor, model.yc/scaling_factor,
+                            step.cmc[0], 1, colors='k', linewidths=2, zorder=4)
+                
+                # showing transient 
+                if showTransient:
+                    if i < idx_tr:
+                        None
+                    else:
+                        # plot the transient
+                        None
+                    
+                for ax in [ax1]:
+                    ax.minorticks_off()
+                    ax.tick_params('both', labelsize=16, length=10,
+                                   width=2., which='major')
+                    
+                cbar = fig.colorbar(cax)
+                cbar.ax.tick_params(labelsize=15)
+                cbar.set_label('$' + colormap_lbl + '$', labelpad=-
+                               42.5, y=1.07, fontsize=15, rotation=0)
+                
+                # set labels
+                ax1.set_xlabel(x_lbl, fontsize=20)
+                ax1.set_ylabel(y_lbl, fontsize=20) #r"$y / R_{r}$"
+                
+                # set title            
+                ax1.set_title(t_lbl, position=(0.5, 0.9), fontsize=18)
+                
+                # related to the zoom
+                ax1.set_xlim(extentx)
+                for ax in [ax1]:
+                    ax.set_ylim(extenty)
+                fig.tight_layout()
+                
+                st = fig.suptitle(title_lbl, fontsize=20) # main title
+                st.set_y(0.97)
+                st.set_x(0.5)
+                fig.subplots_adjust(top=0.9)
+                
+                fig.savefig(figname, dpi=300)                                       
+                plt.close()
+
+# TODO: delete
 
 def field(path1, paths, norm, normpath, zoom_id, lbl, vmiin, vmaax, manualx, manualy, param = 'all'):
     '''
@@ -1005,6 +1282,7 @@ def field(path1, paths, norm, normpath, zoom_id, lbl, vmiin, vmaax, manualx, man
 ***********************************************************************
 '''
 
+# TO DO: delete
 
 def mainevo(folders, path1, paths, norm, normpath, zoom_id, param):
     
@@ -1046,7 +1324,8 @@ def mainevo(folders, path1, paths, norm, normpath, zoom_id, param):
                         
             field(path1a, pathsa, norm, normpath, zoom_id, lbla, param = 'all')
         
-        
+
+# TO DO: delete        
 
 def main(pathdata, folders, pathplots):
     '''
@@ -1077,6 +1356,7 @@ def main(pathdata, folders, pathplots):
 ***********************************************************************
 '''
 
+# TO DO: improve
 
 def transient(pathdata, modelname, pathplots):
     '''
@@ -1136,6 +1416,7 @@ def transient(pathdata, modelname, pathplots):
 ***********************************************************************
 '''
 
+# TO DO: improve
 
 def final(pathdata, modelname, pathplots):
     '''
@@ -1195,6 +1476,7 @@ def final(pathdata, modelname, pathplots):
 ***********************************************************************
 '''
 
+# TO DO: improve
 
 def excavated(pathdata, modelname, pathplots):
     '''
@@ -1258,1992 +1540,47 @@ def excavated(pathdata, modelname, pathplots):
     fig.savefig(pathplots+figtitle, dpi=300)
     plt.close()
 
-
 '''
 ***********************************************************************
-
-def comparisonTransientFinal(path1,path2,pathdata,pathtr,paths,figname,
-                             modelname1,modelname2,extentx,extenty,black,norm,transient):
-    
-    ###
-    description:
-    routine that plots both the transient and final crater dimensions for 
-    two different modelcases (modelcase 1 is shown in the left panel and 
-    modelcase 2 is shown in the right panel).
-    
-    This function is pratical if for example the same 
-    
-    inputs:
-    pathdata: path where the text files have been stored (text files that are obtained
-    from running the main.py script)
-    
-    folders: all modelcases that need to be plotted
-    
-    pathplots: saving plot directory
-    
-    example:
-    
-    path1 = '/var/tmp/mysshfs/stallo/layering/AUG/collapse/results/C00P10F06LONG_L500/'
-    path2 = '/var/tmp/mysshfs/stallo/layering/AUG/collapse/results/C00P10F07LONG_L500/'
-    pathdata = '/media/nilscp/Zell/Collapse/data/'
-    pathtr = pathdata #or
-    #pathtr = '/media/nilscp/Zell/Collapse/data_transient/'
-    paths="/work/nilscp/tmp/"
-    
-    figname = ''
-    modelname1= r'f = 0.6, L = 500 m'
-    modelname2= r'f = 0.7, L = 500 m'
-    extentx=[0,4000]
-    extenty=[-3000,1000]
-    norm = '/media/nilscp/Zell/Collapse/data/C00P10F03_L500/final/C00P10F03_L500_final.txt'
-    #norm = 2
-    transient = True
-    
-    black = 1 # 1 (black) or 0 (white)
-    norm = 0 # 0 (no normalization), normalization to a specific case (string to final .txt file),
-    # any other numbers (normalization to the rim-to-rim crater diameter )
-    
-    comparisonTransientFinal(path1,path2,pathdata,pathtr,paths,figname,
-                             modelname1,modelname2,extentx,extenty,black,norm,transient)
-    
-    # Figure
-    black = 1 # figure in black
-    black = 0 # figure in white
-    
-    # norm
-    norm = 0 nothing (normal in meters)
-    norm = 1 to Drim itself
-    norm = string to a specific case
-
-    
-    # if you want to plot the transient crater or not
-    transient = True
-    transient = False 
-        
-    ###
-    # check if path1 and path2 are similar, if yes we only load one of the path
-    if path1 == path2:
-        os.chdir(path1)
-        mod1 = psp.opendatfile('jdata.dat')
-        mod2 = psp.opendatfile('jdata.dat')
-        step1_1 =  mod1.readStep(['Den'],1)
-        step1_2 = mod2.readStep(['Den'],1)
-        tstep1 = step1_1.time
-        tstep2 = step1_2.time
-        lstep1 =  mod1.readStep(['Den'],mod1.nsteps-1)
-        lstep2 = mod1.readStep(['Den'],mod2.nsteps-1)
-        t1 =  np.around(tstep1*(mod1.nsteps-1),decimals=1)
-        t2 = np.around(tstep1*(mod1.nsteps-1),decimals=1)
-    else:
-           
-        # load data for modelcase 1
-        os.chdir(path1)   
-        mod1=psp.opendatfile('jdata.dat')   
-        
-        # load data for modelcase 2
-        os.chdir(path2)   
-        mod2=psp.opendatfile('jdata.dat')
-    
-        # load first step to get the time
-        step1_1 = mod1.readStep(['Den'],1)   
-        tstep1 = step1_1.time
-        
-        step1_2 = mod2.readStep(['Den'],1)
-        tstep2 = step1_2.time
-        
-        #load last step
-        lstep1 = mod1.readStep(['Den'],mod1.nsteps-1)
-        lstep2 = mod2.readStep(['Den'],mod2.nsteps-1)
-        
-        # get time last step
-        t1 = np.around(tstep1*(mod1.nsteps-1),decimals=1)
-        t2 = np.around(tstep2*(mod2.nsteps-1),decimals=1)
-    
-    # plotting of the data
-    if black == 1:
-        fig=plt.figure(figsize=(12,6),facecolor='black')
-    else:
-        fig=plt.figure(figsize=(12,6))
-    
-    ax1=fig.add_subplot(121)
-    ax2=fig.add_subplot(122)
-    
-    if isinstance(norm, basestring):
-                
-        #get final rim-to-rim diameter 1
-        __, __, __, __, __, Drf1, __  = np.loadtxt(norm,delimiter='\t',comments='#')
-        rinner1 = Drf1 /2.
-        
-        ax1.pcolormesh(-mod1.x/rinner1,mod1.y[::-1]/rinner1,lstep1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-        ax2.pcolormesh(mod2.x/rinner1,mod2.y/rinner1,lstep2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-        
-        ax1.set_xlim([-1.2,0]) #-2000,0 ## -1500,1500
-        ax2.set_xlim([0,1.2])
-    
-        for ax in [ax1,ax2]:
-            ax.minorticks_off()
-            ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-            ax.set_ylim([-0.8,0.8])
-            
-        for u in range(mod1.tracer_numu):
-            tru=mod1.tru[u]
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.xlines),20):
-                ax1.plot(-lstep1.xmark[tru.xlines[l]]/rinner1,
-                        lstep1.ymark[tru.xlines[l]]/rinner1,
-                        c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-            
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.ylines),20):
-                ax1.plot(-lstep1.xmark[tru.ylines[l]]/rinner1,
-                         lstep1.ymark[tru.ylines[l]]/rinner1,
-                         c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                         
-        for u in range(mod2.tracer_numu):
-            tru=mod2.tru[u]
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.xlines),20):
-                ax2.plot(lstep2.xmark[tru.xlines[l]]/rinner1,
-                        lstep2.ymark[tru.xlines[l]]/rinner1,
-                        c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-            
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.ylines),20):
-                ax2.plot(lstep2.xmark[tru.ylines[l]]/rinner1,
-                         lstep2.ymark[tru.ylines[l]]/rinner1,
-                         c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-    else:        
-        if norm == 0:
-            ax1.pcolormesh(-mod1.x,mod1.y[::-1],lstep1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            ax2.pcolormesh(mod2.x,mod2.y,lstep2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            
-            ax1.set_xlim([-extentx[1],extentx[0]]) #-2000,0 ## -1500,1500
-            ax2.set_xlim([extentx[0],extentx[1]])
-            
-            for ax in [ax1,ax2]:
-                ax.set_ylim([extenty[0],extenty[1]])
-                ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                
-            for u in range(mod1.tracer_numu):
-                tru=mod1.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax1.plot(-lstep1.xmark[tru.xlines[l]],
-                            lstep1.ymark[tru.xlines[l]],
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax1.plot(-lstep1.xmark[tru.ylines[l]],
-                             lstep1.ymark[tru.ylines[l]],
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                             
-            for u in range(mod2.tracer_numu):
-                tru=mod2.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax2.plot(lstep2.xmark[tru.xlines[l]],
-                            lstep2.ymark[tru.xlines[l]],
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax2.plot(lstep2.xmark[tru.ylines[l]],
-                             lstep2.ymark[tru.ylines[l]],
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-
-        else:
-            mm1 = path1.split('/')[-2]
-            mm2 = path2.split('/')[-2]
-            
-            os.chdir(pathdata + mm1 + '/final/')
-            
-            #get final rim-to-rim diameter 1
-            __, __, __, __, __, Drf1, __  = np.loadtxt(mm1 + '_final.txt',delimiter='\t',comments='#')
-            rinner1 = Drf1 /2.
-    
-            os.chdir(pathdata + mm2 + '/final/')
-            __, __, __, __, __, Drf2, __   = np.loadtxt(mm2 + '_final.txt',delimiter='\t',comments='#')
-            rinner2 = Drf2 /2.
-            
-            ax1.pcolormesh(-mod1.x/rinner1,mod1.y[::-1]/rinner1,lstep1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            ax2.pcolormesh(mod2.x/rinner2,mod2.y/rinner2,lstep2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            
-            ax1.set_xlim([-1.2,0]) #-2000,0 ## -1500,1500
-            ax2.set_xlim([0,1.2])
-        
-            for ax in [ax1,ax2]:
-                ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                ax.set_ylim([-0.8,0.8])
- 
-            for u in range(mod1.tracer_numu):
-                tru=mod1.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax1.plot(-lstep1.xmark[tru.xlines[l]]/rinner1,
-                            lstep1.ymark[tru.xlines[l]]/rinner1,
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax1.plot(-lstep1.xmark[tru.ylines[l]]/rinner1,
-                             lstep1.ymark[tru.ylines[l]]/rinner1,
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                             
-            for u in range(mod2.tracer_numu):
-                tru=mod2.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax2.plot(lstep2.xmark[tru.xlines[l]]/rinner2,
-                            lstep2.ymark[tru.xlines[l]]/rinner2,
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax2.plot(lstep2.xmark[tru.ylines[l]]/rinner2,
-                             lstep2.ymark[tru.ylines[l]]/rinner2,
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)        
-                
-    if transient:
-        
-        # we add the directory pathtr only in case where the transient crater was not
-        # measured properly in the current modelcase (because of too coarse saving timesteps)
-                
-        if (pathtr != pathdata):
-            mtmp0 = path1.split('/')[-2]
-            mtmp1 = mtmp0.split('_L')[0]
-            mtmp2 = mtmp1.split('_')
-            mm1 = mtmp2[0] + '_TR_' + mtmp2[1] + '_L' + mtmp0.split('_L')[1]
-            
-            mtmp0 = path2.split('/')[-2]
-            mtmp1 = mtmp0.split('_L')[0]
-            mtmp2 = mtmp1.split('_')
-            mm2 = mtmp2[0] + '_TR_' + mtmp2[1] + '_L' + mtmp0.split('_L')[1]
-        else:
-            mm1 = path1.split('/')[-2]
-            mm2 = path2.split('/')[-2]
-                
-        os.chdir(pathtr + mm1 + '/transient/')
-        
-        #load data for the transient crater 1
-        t_tr, da_tr, Da_tr, V_tr, h_tr, Dr_tr1, Vr_tr, __  = np.loadtxt(mm1 + '_tr.txt',delimiter='\t',comments='#')
-        data_tr1 = np.loadtxt(mm1 + '_XYtransientprofile.txt',delimiter='\t',comments='#')
-        
-        # plotting of the transient crater (it would be nice to have it until drim_tr)        
-        mm2 = path2.split('/')[-2]
-        os.chdir(pathtr + mm2 + '/transient/')
-        
-        #load data for the transient crater 2
-        t_tr, da_tr, Da_tr, V_tr, h_tr, Dr_tr2, Vr_tr, __  = np.loadtxt(mm2 + '_tr.txt',delimiter='\t',comments='#')
-        data_tr2 = np.loadtxt(mm2 + '_XYtransientprofile.txt',delimiter='\t',comments='#')   
-               
-        #Only show the transient crater profile for height lower than 500 m over the
-        # pre-impact surface
-        ij1 = np.where((data_tr1[:,1]<=500.) & (data_tr1[:,0]<=Dr_tr1/2.))
-        ij2 = np.where((data_tr2[:,1]<=500.) & (data_tr2[:,0]<=Dr_tr2/2.))
-        
-        if isinstance(norm, basestring):
-            ax2.plot(data_tr2[ij2[0],0]/rinner1,data_tr2[ij2[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-            ax1.plot(-data_tr1[ij1[0],0]/rinner1,data_tr1[ij1[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-            #plot boundary
-            ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,lstep1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc/rinner1,mod2.yc/rinner1,lstep2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-        elif norm == 0:
-            ax2.plot(data_tr2[ij2[0],0],data_tr2[ij2[0],1],color='b',linewidth=4,zorder=5)
-            ax1.plot(-data_tr1[ij1[0],0],data_tr1[ij1[0],1],color='b',linewidth=4,zorder=5)           
-            #plot boundary
-            ax1.contour(-mod1.xc,mod1.yc,lstep1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc,mod2.yc,lstep2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            
-        else:
-            ax2.plot(data_tr2[ij2[0],0]/rinner2,data_tr2[ij2[0],1]/rinner2,color='b',linewidth=4,zorder=5)
-            ax1.plot(-data_tr1[ij1[0],0]/rinner1,data_tr1[ij1[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-            ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,lstep1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc/rinner2,mod2.yc/rinner2,lstep2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-    else:
-        if isinstance(norm, basestring):
-            #plot boundary
-            ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,lstep1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc/rinner1,mod2.yc/rinner1,lstep2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-        elif norm == 0:
-            #plot boundary
-            ax1.contour(-mod1.xc,mod1.yc,lstep1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc,mod2.yc,lstep2.cmc[0],1,colors='r',linewidths=4,zorder=4)           
-        else:
-            ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,lstep1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc/rinner2,mod2.yc/rinner2,lstep2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-    
-    ax2.yaxis.tick_right()       
-    if black == 1:
-        for ax in [ax1,ax2]:
-            ax.tick_params(axis='x', colors='white',labelsize=18)
-            ax.tick_params(axis='y', colors='white',labelsize=18)
-            ax.spines['bottom'].set_color('white')
-            ax.spines['top'].set_color('white')
-            ax.set_axis_bgcolor('black')
-            ax.spines['left'].set_color('white')
-            ax.spines['right'].set_color('white')
-            
-        ax1.spines['left'].set_color('white')
-        ax2.spines['right'].set_color('white')
-        
-    if (path1 != path2):    
-        fig.tight_layout()
-        fig.subplots_adjust(wspace=0.06, hspace=0.0)
-        if black == 1:
-            ax1.set_title(modelname1 + " , t = " + str(t1) + " s",color = 'white', position=(0.5, 0.9),fontsize=18)
-            ax2.set_title(modelname2 + " , t = " + str(t2) + " s",color = 'white', position=(0.5, 0.9),fontsize=18)
-        else:
-            ax1.set_title(modelname1 + " , t = " + str(t1) + " s",position=(0.5, 0.9),fontsize=18)
-            ax2.set_title(modelname2 + " , t = " + str(t2) + " s",position=(0.5, 0.9),fontsize=18)
-    else:
-        ax1.spines['right'].set_visible(False)
-        ax2.spines['left'].set_visible(False)
-        ax1.yaxis.set_ticks_position('left')
-        ax1.xaxis.set_ticks_position('bottom')
-        ax2.yaxis.set_ticks_position('right')
-        ax2.xaxis.set_ticks_position('bottom')
-        
-        if black == 1:
-            fig.tight_layout()
-            fig.subplots_adjust(wspace=0.00, hspace=0.0)       
-            fig.suptitle(modelname1 + " , t = " + str(t1) + " s",color = 'white',position=(0.5, 0.9),fontsize=24)
-        else:
-            fig.tight_layout()
-            fig.subplots_adjust(wspace=0.00, hspace=0.0)       
-            fig.suptitle(modelname1 + " , t = " + str(t1) + " s", position=(0.5, 0.9), fontsize=24)
-
-    figtitle= figname + ".png"
-    
-    if black == 1:
-        fig.savefig(paths+figtitle,dpi=300,facecolor=fig.get_facecolor(), transparent=True)
-    else:
-        fig.savefig(paths+figtitle,dpi=300)
-    #plt.close()
-    
-    mod1.closeFile()
-    mod2.closeFile()
-        
-    return fig
-    
-
-***********************************************************************
-
-    
-def evolution(path1,path2,pathdata,pathtr,paths,figname,
-              modelname1,modelname2,extentx,extenty,black,norm,transient):
-    
-    ###
-    description:
-    routine that plots both the transient and final crater dimensions for 
-    two different modelcases (modelcase 1 is shown in the left panel and 
-    modelcase 2 is shown in the right panel).
-    
-    This function is pratical if for example the same 
-    
-    inputs:
-    pathdata: path where the text files have been stored (text files that are obtained
-    from running the main.py script)
-    
-    folders: all modelcases that need to be plotted
-    
-    pathplots: saving plot directory
-    
-    example:
-    
-    path1 = '/var/tmp/mysshfs/stallo/collapse/ART3/results/C00P30F06_L600/'
-    path2 = '/var/tmp/mysshfs/stallo/collapse/ART3/results/C00P30F06_L600/'
-    pathdata = '/media/nilscp/Zell/Collapse/data/'
-    pathtr = pathdata #or
-    #pathtr = '/media/nilscp/Zell/Collapse/data_transient/'
-    paths="/work/nilscp/tmp/"
-    
-    figname = ''
-    modelname1= r'C1-3, L = 600'
-    modelname2= r'C1-3, L = 600'
-    extentx=[0,4000]
-    extenty=[-3000,1000]
-    #norm = '/media/nilscp/Zell/Collapse/data/C00P30F06_L600/final/C00P30F06_L600_final.txt'
-    norm = 2
-    transient = True
-    
-    black = 1 # 1 (black) or 0 (white)
-    norm = 0 # 0 (no normalization), normalization to a specific case (string to final .txt file),
-    # any other numbers (normalization to the rim-to-rim crater diameter )
-    
-    evolution(path1,path2,pathdata,pathtr,paths,figname,
-                             modelname1,modelname2,extentx,extenty,black,norm,transient)
-    
-    # Figure
-    black = 1 # figure in black
-    black = 0 # figure in white
-    
-    # norm
-    norm = 0 nothing (normal in meters)
-    norm = 1 to Drim itself
-    norm = string to a specific case
-
-    
-    # if you want to plot the transient crater or not
-    transient = True
-    transient = False 
-        
-    ###
-    # check if path1 and path2 are similar, if yes we only load one of the path
-    if path1 == path2:
-        os.chdir(path1)
-        mod1 = psp.opendatfile('jdata.dat')
-        mod2 = psp.opendatfile('jdata.dat')
-        mm1 = path1.split('/')[-2]
-        mm2 = path2.split('/')[-2]
-        
-    else:
-           
-        # load data for modelcase 1
-        os.chdir(path1)   
-        mod1=psp.opendatfile('jdata.dat')   
-        
-        # load data for modelcase 2
-        os.chdir(path2)   
-        mod2=psp.opendatfile('jdata.dat')
-        
-        mm1 = path1.split('/')[-2]
-        mm2 = path2.split('/')[-2]
-            
-    n1 = mod1.nsteps
-    n2 = mod2.nsteps
-    
-    if transient:
-        
-        # we add the directory pathtr only in case where the transient crater was not
-        # measured properly in the current modelcase (because of too coarse saving timesteps)
-                
-        if (pathtr != pathdata):
-            mtmp0 = path1.split('/')[-2]
-            mtmp1 = mtmp0.split('_L')[0]
-            mtmp2 = mtmp1.split('_')
-            mm1 = mtmp2[0] + '_TR_' + mtmp2[1] + '_L' + mtmp0.split('_L')[1]
-            
-            mtmp0 = path2.split('/')[-2]
-            mtmp1 = mtmp0.split('_L')[0]
-            mtmp2 = mtmp1.split('_')
-            mm2 = mtmp2[0] + '_TR_' + mtmp2[1] + '_L' + mtmp0.split('_L')[1]
-        else:
-            mm1 = path1.split('/')[-2]
-            mm2 = path2.split('/')[-2]
-                
-        os.chdir(pathtr + mm1 + '/transient/')
-        
-        #load data for the transient crater 1
-        t_tr, da_tr, Da_tr, V_tr, h_tr, Dr_tr1, Vr_tr, __  = np.loadtxt(mm1 + '_tr.txt',delimiter='\t',comments='#')
-        data_tr1 = np.loadtxt(mm1 + '_XYtransientprofile.txt',delimiter='\t',comments='#')
-        
-        # plotting of the transient crater (it would be nice to have it until drim_tr)        
-        mm2 = path2.split('/')[-2]
-        os.chdir(pathtr + mm2 + '/transient/')
-        
-        #load data for the transient crater 2
-        t_tr, da_tr, Da_tr, V_tr, h_tr, Dr_tr2, Vr_tr, __  = np.loadtxt(mm2 + '_tr.txt',delimiter='\t',comments='#')
-        data_tr2 = np.loadtxt(mm2 + '_XYtransientprofile.txt',delimiter='\t',comments='#')   
-    
-    if n1 >= n2:
-        
-        for p in range(mod1.nsteps):
-            
-            # each timestep are saved in the variable step
-            den = mod1.readStep('Den',p) 
-            step1 = copy.deepcopy(den)
-            
-            # time in crater evolution
-            time1 = np.around(step1.time,decimals=1)
-            
-            den2 = mod2.readStep('Den',p) 
-            step2 = copy.deepcopy(den2)
-            
-            # time in crater evolution
-            time2 = np.around(step2.time,decimals=1)
-    
-            # plotting of the data
-            if black == 1:
-                fig=plt.figure(figsize=(12,6),facecolor='black')
-            else:
-                fig=plt.figure(figsize=(12,6))
-            
-            ax1=fig.add_subplot(121)
-            ax2=fig.add_subplot(122)
-            
-            if isinstance(norm, basestring):
-                        
-                #get final rim-to-rim diameter 1
-                __, __, __, __, __, Drf1, __  = np.loadtxt(norm,delimiter='\t',comments='#')
-                rinner1 = Drf1 /2.
-                
-                ax1.pcolormesh(-mod1.x/rinner1,mod1.y[::-1]/rinner1,step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                ax2.pcolormesh(mod2.x/rinner1,mod2.y/rinner1,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                
-                ax1.set_xlim([-1.2,0]) #-2000,0 ## -1500,1500
-                ax2.set_xlim([0,1.2])
-            
-                for ax in [ax1,ax2]:
-                    ax.minorticks_off()
-                    ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                    ax.set_ylim([-0.8,0.8])
-                    
-                for u in range(mod1.tracer_numu):
-                    tru=mod1.tru[u]
-                    # Plot the tracers in horizontal lines, every 20 lines
-                    for l in arange(0,len(tru.xlines),20):
-                        ax1.plot(-step1.xmark[tru.xlines[l]]/rinner1,
-                                step1.ymark[tru.xlines[l]]/rinner1,
-                                c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                    
-                    # Plot the tracers in horizontal lines, every 20 lines
-                    for l in arange(0,len(tru.ylines),20):
-                        ax1.plot(-step1.xmark[tru.ylines[l]]/rinner1,
-                                 step1.ymark[tru.ylines[l]]/rinner1,
-                                 c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                                 
-                for u in range(mod2.tracer_numu):
-                    tru=mod2.tru[u]
-                    # Plot the tracers in horizontal lines, every 20 lines
-                    for l in arange(0,len(tru.xlines),20):
-                        ax2.plot(step2.xmark[tru.xlines[l]]/rinner1,
-                                step2.ymark[tru.xlines[l]]/rinner1,
-                                c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                    
-                    # Plot the tracers in horizontal lines, every 20 lines
-                    for l in arange(0,len(tru.ylines),20):
-                        ax2.plot(step2.xmark[tru.ylines[l]]/rinner1,
-                                 step2.ymark[tru.ylines[l]]/rinner1,
-                                 c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-            else:        
-                if norm == 0:
-                    ax1.pcolormesh(-mod1.x,mod1.y[::-1],step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                    ax2.pcolormesh(mod2.x,mod2.y,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                    
-                    ax1.set_xlim([-extentx[1],extentx[0]]) #-2000,0 ## -1500,1500
-                    ax2.set_xlim([extentx[0],extentx[1]])
-                    
-                    for ax in [ax1,ax2]:
-                        ax.set_ylim([extenty[0],extenty[1]])
-                        ax.minorticks_off()
-                        ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                        
-                    for u in range(mod1.tracer_numu):
-                        tru=mod1.tru[u]
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.xlines),20):
-                            ax1.plot(-step1.xmark[tru.xlines[l]],
-                                    step1.ymark[tru.xlines[l]],
-                                    c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                        
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.ylines),20):
-                            ax1.plot(-step1.xmark[tru.ylines[l]],
-                                     step1.ymark[tru.ylines[l]],
-                                     c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                                     
-                    for u in range(mod2.tracer_numu):
-                        tru=mod2.tru[u]
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.xlines),20):
-                            ax2.plot(step2.xmark[tru.xlines[l]],
-                                    step2.ymark[tru.xlines[l]],
-                                    c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                        
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.ylines),20):
-                            ax2.plot(step2.xmark[tru.ylines[l]],
-                                     step2.ymark[tru.ylines[l]],
-                                     c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-        
-                else:
-                    mm1 = path1.split('/')[-2]
-                    mm2 = path2.split('/')[-2]
-                    
-                    os.chdir(pathdata + mm1 + '/final/')
-                    
-                    #get final rim-to-rim diameter 1
-                    __, __, __, __, __, Drf1, __  = np.loadtxt(mm1 + '_final.txt',delimiter='\t',comments='#')
-                    rinner1 = Drf1 /2.
-            
-                    os.chdir(pathdata + mm2 + '/final/')
-                    __, __, __, __, __, Drf2, __   = np.loadtxt(mm2 + '_final.txt',delimiter='\t',comments='#')
-                    rinner2 = Drf2 /2.
-                    
-                    ax1.pcolormesh(-mod1.x/rinner1,mod1.y[::-1]/rinner1,step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                    ax2.pcolormesh(mod2.x/rinner2,mod2.y/rinner2,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                    
-                    ax1.set_xlim([-1.2,0]) #-2000,0 ## -1500,1500
-                    ax2.set_xlim([0,1.2])
-                
-                    for ax in [ax1,ax2]:
-                        ax.minorticks_off()
-                        ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                        ax.set_ylim([-0.8,0.8])
-         
-                    for u in range(mod1.tracer_numu):
-                        tru=mod1.tru[u]
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.xlines),20):
-                            ax1.plot(-step1.xmark[tru.xlines[l]]/rinner1,
-                                    step1.ymark[tru.xlines[l]]/rinner1,
-                                    c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                        
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.ylines),20):
-                            ax1.plot(-step1.xmark[tru.ylines[l]]/rinner1,
-                                     step1.ymark[tru.ylines[l]]/rinner1,
-                                     c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                                     
-                    for u in range(mod2.tracer_numu):
-                        tru=mod2.tru[u]
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.xlines),20):
-                            ax2.plot(step2.xmark[tru.xlines[l]]/rinner2,
-                                    step2.ymark[tru.xlines[l]]/rinner2,
-                                    c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                        
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.ylines),20):
-                            ax2.plot(step2.xmark[tru.ylines[l]]/rinner2,
-                                     step2.ymark[tru.ylines[l]]/rinner2,
-                                     c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)        
-                        
-            if transient:
-                                  
-                #Only show the transient crater profile for height lower than 500 m over the
-                # pre-impact surface
-                ij1 = np.where((data_tr1[:,1]<=500.) & (data_tr1[:,0]<=Dr_tr1/2.))
-                ij2 = np.where((data_tr2[:,1]<=500.) & (data_tr2[:,0]<=Dr_tr2/2.))
-                
-                if isinstance(norm, basestring):
-                    ax2.plot(data_tr2[ij2[0],0]/rinner1,data_tr2[ij2[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-                    ax1.plot(-data_tr1[ij1[0],0]/rinner1,data_tr1[ij1[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-                    #plot boundary
-                    ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc/rinner1,mod2.yc/rinner1,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                elif norm == 0:
-                    ax2.plot(data_tr2[ij2[0],0],data_tr2[ij2[0],1],color='b',linewidth=4,zorder=5)
-                    ax1.plot(-data_tr1[ij1[0],0],data_tr1[ij1[0],1],color='b',linewidth=4,zorder=5)           
-                    #plot boundary
-                    ax1.contour(-mod1.xc,mod1.yc,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc,mod2.yc,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    
-                else:
-                    ax2.plot(data_tr2[ij2[0],0]/rinner2,data_tr2[ij2[0],1]/rinner2,color='b',linewidth=4,zorder=5)
-                    ax1.plot(-data_tr1[ij1[0],0]/rinner1,data_tr1[ij1[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-                    ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc/rinner2,mod2.yc/rinner2,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            else:
-                if isinstance(norm, basestring):
-                    #plot boundary
-                    ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc/rinner1,mod2.yc/rinner1,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                elif norm == 0:
-                    #plot boundary
-                    ax1.contour(-mod1.xc,mod1.yc,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc,mod2.yc,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)           
-                else:
-                    ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc/rinner2,mod2.yc/rinner2,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            
-            ax2.yaxis.tick_right()       
-            if black == 1:
-                for ax in [ax1,ax2]:
-                    ax.tick_params(axis='x', colors='white',labelsize=18)
-                    ax.tick_params(axis='y', colors='white',labelsize=18)
-                    ax.spines['bottom'].set_color('white')
-                    ax.spines['top'].set_color('white')
-                    ax.set_axis_bgcolor('black')
-                    ax.spines['left'].set_color('white')
-                    ax.spines['right'].set_color('white')
-                    
-                ax1.spines['left'].set_color('white')
-                ax2.spines['right'].set_color('white')
-                
-            if (path1 != path2):    
-                fig.tight_layout()
-                fig.subplots_adjust(wspace=0.06, hspace=0.0)
-                if black == 1:
-                    ax1.set_title(modelname1 + " , t = " + str(time1) + " s",color = 'white', position=(0.5, 0.9),fontsize=18)
-                    ax2.set_title(modelname2 + " , t = " + str(time2) + " s",color = 'white', position=(0.5, 0.9),fontsize=18)
-                else:
-                    ax1.set_title(modelname1 + " , t = " + str(time1) + " s",position=(0.5, 0.9),fontsize=18)
-                    ax2.set_title(modelname2 + " , t = " + str(time2) + " s",position=(0.5, 0.9),fontsize=18)
-            else:
-                ax1.spines['right'].set_visible(False)
-                ax2.spines['left'].set_visible(False)
-                ax1.yaxis.set_ticks_position('left')
-                ax1.xaxis.set_ticks_position('bottom')
-                ax2.yaxis.set_ticks_position('right')
-                ax2.xaxis.set_ticks_position('bottom')
-                
-                if black == 1:
-                    fig.tight_layout()
-                    fig.subplots_adjust(wspace=0.00, hspace=0.0)       
-                    fig.suptitle(modelname1 + " , t = " + str(time1) + " s",color = 'white',position=(0.5, 0.9),fontsize=24)
-                else:
-                    fig.tight_layout()
-                    fig.subplots_adjust(wspace=0.00, hspace=0.0)       
-                    fig.suptitle(modelname1 + " , t = " + str(time1) + " s", position=(0.5, 0.9), fontsize=24)
-        
-            if black == 1:
-                figtitle= mm1 + "_" + mm2 + "_" + str(p).zfill(3) + ".png"
-                fig.savefig(paths+figtitle,dpi=300,facecolor=fig.get_facecolor(), transparent=True)
-                plt.close()
-            else:
-                figtitle= mm1 + "_" + mm2 + "_" + str(p).zfill(3) + ".png"
-                fig.savefig(paths+figtitle,dpi=300)
-                plt.close()
-            #plt.close()
-    
-    elif n2 > n1:
-        for p in range(mod2.nsteps):
-            
-            # each timestep are saved in the variable step
-            den = mod1.readStep('Den',p) 
-            step1 = copy.deepcopy(den)
-            
-            # time in crater evolution
-            time1 = np.around(step1.time,decimals=1) 
-            
-            den2 = mod2.readStep('Den',p) 
-            step2 = copy.deepcopy(den2)
-            
-            # time in crater evolution
-            time2 = np.around(step2.time,decimals=1) 
-    
-            # plotting of the data
-            if black == 1:
-                fig=plt.figure(figsize=(12,6),facecolor='black')
-            else:
-                fig=plt.figure(figsize=(12,6))
-            
-            ax1=fig.add_subplot(121)
-            ax2=fig.add_subplot(122)
-            
-            if isinstance(norm, basestring):
-                        
-                #get final rim-to-rim diameter 1
-                __, __, __, __, __, Drf1, __  = np.loadtxt(norm,delimiter='\t',comments='#')
-                rinner1 = Drf1 /2.
-                
-                ax1.pcolormesh(-mod1.x/rinner1,mod1.y[::-1]/rinner1,step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                ax2.pcolormesh(mod2.x/rinner1,mod2.y/rinner1,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                
-                ax1.set_xlim([-1.2,0]) #-2000,0 ## -1500,1500
-                ax2.set_xlim([0,1.2])
-            
-                for ax in [ax1,ax2]:
-                    ax.minorticks_off()
-                    ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                    ax.set_ylim([-0.8,0.8])
-                    
-                for u in range(mod1.tracer_numu):
-                    tru=mod1.tru[u]
-                    # Plot the tracers in horizontal lines, every 20 lines
-                    for l in arange(0,len(tru.xlines),20):
-                        ax1.plot(-step1.xmark[tru.xlines[l]]/rinner1,
-                                step1.ymark[tru.xlines[l]]/rinner1,
-                                c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                    
-                    # Plot the tracers in horizontal lines, every 20 lines
-                    for l in arange(0,len(tru.ylines),20):
-                        ax1.plot(-step1.xmark[tru.ylines[l]]/rinner1,
-                                 step1.ymark[tru.ylines[l]]/rinner1,
-                                 c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                                 
-                for u in range(mod2.tracer_numu):
-                    tru=mod2.tru[u]
-                    # Plot the tracers in horizontal lines, every 20 lines
-                    for l in arange(0,len(tru.xlines),20):
-                        ax2.plot(step2.xmark[tru.xlines[l]]/rinner1,
-                                step2.ymark[tru.xlines[l]]/rinner1,
-                                c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                    
-                    # Plot the tracers in horizontal lines, every 20 lines
-                    for l in arange(0,len(tru.ylines),20):
-                        ax2.plot(step2.xmark[tru.ylines[l]]/rinner1,
-                                 step2.ymark[tru.ylines[l]]/rinner1,
-                                 c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-            else:        
-                if norm == 0:
-                    ax1.pcolormesh(-mod1.x,mod1.y[::-1],step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                    ax2.pcolormesh(mod2.x,mod2.y,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                    
-                    ax1.set_xlim([-extentx[1],extentx[0]]) #-2000,0 ## -1500,1500
-                    ax2.set_xlim([extentx[0],extentx[1]])
-                    
-                    for ax in [ax1,ax2]:
-                        ax.set_ylim([extenty[0],extenty[1]])
-                        ax.minorticks_off()
-                        ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                        
-                    for u in range(mod1.tracer_numu):
-                        tru=mod1.tru[u]
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.xlines),20):
-                            ax1.plot(-step1.xmark[tru.xlines[l]],
-                                    step1.ymark[tru.xlines[l]],
-                                    c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                        
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.ylines),20):
-                            ax1.plot(-step1.xmark[tru.ylines[l]],
-                                     step1.ymark[tru.ylines[l]],
-                                     c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                                     
-                    for u in range(mod2.tracer_numu):
-                        tru=mod2.tru[u]
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.xlines),20):
-                            ax2.plot(step2.xmark[tru.xlines[l]],
-                                    step2.ymark[tru.xlines[l]],
-                                    c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                        
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.ylines),20):
-                            ax2.plot(step2.xmark[tru.ylines[l]],
-                                     step2.ymark[tru.ylines[l]],
-                                     c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-        
-                else:
-                    mm1 = path1.split('/')[-2]
-                    mm2 = path2.split('/')[-2]
-                    
-                    os.chdir(pathdata + mm1 + '/final/')
-                    
-                    #get final rim-to-rim diameter 1
-                    __, __, __, __, __, Drf1, __  = np.loadtxt(mm1 + '_final.txt',delimiter='\t',comments='#')
-                    rinner1 = Drf1 /2.
-            
-                    os.chdir(pathdata + mm2 + '/final/')
-                    __, __, __, __, __, Drf2, __   = np.loadtxt(mm2 + '_final.txt',delimiter='\t',comments='#')
-                    rinner2 = Drf2 /2.
-                    
-                    ax1.pcolormesh(-mod1.x/rinner1,mod1.y[::-1]/rinner1,step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                    ax2.pcolormesh(mod2.x/rinner2,mod2.y/rinner2,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-                    
-                    ax1.set_xlim([-1.2,0]) #-2000,0 ## -1500,1500
-                    ax2.set_xlim([0,1.2])
-                
-                    for ax in [ax1,ax2]:
-                        ax.minorticks_off()
-                        ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                        ax.set_ylim([-0.8,0.8])
-         
-                    for u in range(mod1.tracer_numu):
-                        tru=mod1.tru[u]
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.xlines),20):
-                            ax1.plot(-step1.xmark[tru.xlines[l]]/rinner1,
-                                    step1.ymark[tru.xlines[l]]/rinner1,
-                                    c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                        
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.ylines),20):
-                            ax1.plot(-step1.xmark[tru.ylines[l]]/rinner1,
-                                     step1.ymark[tru.ylines[l]]/rinner1,
-                                     c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                                     
-                    for u in range(mod2.tracer_numu):
-                        tru=mod2.tru[u]
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.xlines),20):
-                            ax2.plot(step2.xmark[tru.xlines[l]]/rinner2,
-                                    step2.ymark[tru.xlines[l]]/rinner2,
-                                    c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                        
-                        # Plot the tracers in horizontal lines, every 20 lines
-                        for l in arange(0,len(tru.ylines),20):
-                            ax2.plot(step2.xmark[tru.ylines[l]]/rinner2,
-                                     step2.ymark[tru.ylines[l]]/rinner2,
-                                     c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)        
-                        
-            if transient:
-                
-                # we add the directory pathtr only in case where the transient crater was not
-                # measured properly in the current modelcase (because of too coarse saving timesteps)
-                        
-                if (pathtr != pathdata):
-                    mtmp0 = path1.split('/')[-2]
-                    mtmp1 = mtmp0.split('_L')[0]
-                    mtmp2 = mtmp1.split('_')
-                    mm1 = mtmp2[0] + '_TR_' + mtmp2[1] + '_L' + mtmp0.split('_L')[1]
-                    
-                    mtmp0 = path2.split('/')[-2]
-                    mtmp1 = mtmp0.split('_L')[0]
-                    mtmp2 = mtmp1.split('_')
-                    mm2 = mtmp2[0] + '_TR_' + mtmp2[1] + '_L' + mtmp0.split('_L')[1]
-                else:
-                    mm1 = path1.split('/')[-2]
-                    mm2 = path2.split('/')[-2]
-                        
-                os.chdir(pathtr + mm1 + '/transient/')
-                
-                #load data for the transient crater 1
-                t_tr, da_tr, Da_tr, V_tr, h_tr, Dr_tr1, Vr_tr, __  = np.loadtxt(mm1 + '_tr.txt',delimiter='\t',comments='#')
-                data_tr1 = np.loadtxt(mm1 + '_XYtransientprofile.txt',delimiter='\t',comments='#')
-                
-                # plotting of the transient crater (it would be nice to have it until drim_tr)        
-                mm2 = path2.split('/')[-2]
-                os.chdir(pathtr + mm2 + '/transient/')
-                
-                #load data for the transient crater 2
-                t_tr, da_tr, Da_tr, V_tr, h_tr, Dr_tr2, Vr_tr, __  = np.loadtxt(mm2 + '_tr.txt',delimiter='\t',comments='#')
-                data_tr2 = np.loadtxt(mm2 + '_XYtransientprofile.txt',delimiter='\t',comments='#')   
-                       
-                #Only show the transient crater profile for height lower than 500 m over the
-                # pre-impact surface
-                ij1 = np.where((data_tr1[:,1]<=500.) & (data_tr1[:,0]<=Dr_tr1/2.))
-                ij2 = np.where((data_tr2[:,1]<=500.) & (data_tr2[:,0]<=Dr_tr2/2.))
-                
-                if isinstance(norm, basestring):
-                    ax2.plot(data_tr2[ij2[0],0]/rinner1,data_tr2[ij2[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-                    ax1.plot(-data_tr1[ij1[0],0]/rinner1,data_tr1[ij1[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-                    #plot boundary
-                    ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc/rinner1,mod2.yc/rinner1,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                elif norm == 0:
-                    ax2.plot(data_tr2[ij2[0],0],data_tr2[ij2[0],1],color='b',linewidth=4,zorder=5)
-                    ax1.plot(-data_tr1[ij1[0],0],data_tr1[ij1[0],1],color='b',linewidth=4,zorder=5)           
-                    #plot boundary
-                    ax1.contour(-mod1.xc,mod1.yc,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc,mod2.yc,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    
-                else:
-                    ax2.plot(data_tr2[ij2[0],0]/rinner2,data_tr2[ij2[0],1]/rinner2,color='b',linewidth=4,zorder=5)
-                    ax1.plot(-data_tr1[ij1[0],0]/rinner1,data_tr1[ij1[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-                    ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc/rinner2,mod2.yc/rinner2,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            else:
-                if isinstance(norm, basestring):
-                    #plot boundary
-                    ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc/rinner1,mod2.yc/rinner1,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                elif norm == 0:
-                    #plot boundary
-                    ax1.contour(-mod1.xc,mod1.yc,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc,mod2.yc,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)           
-                else:
-                    ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-                    ax2.contour(mod2.xc/rinner2,mod2.yc/rinner2,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            
-            ax2.yaxis.tick_right()       
-            if black == 1:
-                for ax in [ax1,ax2]:
-                    ax.tick_params(axis='x', colors='white',labelsize=18)
-                    ax.tick_params(axis='y', colors='white',labelsize=18)
-                    ax.spines['bottom'].set_color('white')
-                    ax.spines['top'].set_color('white')
-                    ax.set_axis_bgcolor('black')
-                    ax.spines['left'].set_color('white')
-                    ax.spines['right'].set_color('white')
-                    
-                ax1.spines['left'].set_color('white')
-                ax2.spines['right'].set_color('white')
-                
-            if (path1 != path2):    
-                fig.tight_layout()
-                fig.subplots_adjust(wspace=0.06, hspace=0.0)
-                if black == 1:
-                    ax1.set_title(modelname1 + " , t = " + str(time1) + " s",color = 'white', position=(0.5, 0.9),fontsize=18)
-                    ax2.set_title(modelname2 + " , t = " + str(time2) + " s",color = 'white', position=(0.5, 0.9),fontsize=18)
-                else:
-                    ax1.set_title(modelname1 + " , t = " + str(time1) + " s",position=(0.5, 0.9),fontsize=18)
-                    ax2.set_title(modelname2 + " , t = " + str(time2) + " s",position=(0.5, 0.9),fontsize=18)
-            else:
-                ax1.spines['right'].set_visible(False)
-                ax2.spines['left'].set_visible(False)
-                ax1.yaxis.set_ticks_position('left')
-                ax1.xaxis.set_ticks_position('bottom')
-                ax2.yaxis.set_ticks_position('right')
-                ax2.xaxis.set_ticks_position('bottom')
-                
-                if black == 1:
-                    fig.tight_layout()
-                    fig.subplots_adjust(wspace=0.00, hspace=0.0)       
-                    fig.suptitle(modelname1 + " , t = " + str(time1) + " s",color = 'white',position=(0.5, 0.9),fontsize=24)
-                else:
-                    fig.tight_layout()
-                    fig.subplots_adjust(wspace=0.00, hspace=0.0)       
-                    fig.suptitle(modelname1 + " , t = " + str(time1) + " s", position=(0.5, 0.9), fontsize=24)
-                    
-            if black == 1:
-                figtitle= mm1 + "_" + mm2 + "_" + str(p).zfill(3) + ".png"
-                fig.savefig(paths+figtitle,dpi=300,facecolor=fig.get_facecolor(), transparent=True)
-                plt.close()
-            else:
-                figtitle= mm1 + "_" + mm2 + "_" + str(p).zfill(3) + ".png"
-                fig.savefig(paths+figtitle,dpi=300)
-                plt.close()
-            
-    
-    mod1.closeFile()
-    mod2.closeFile()
-        
-    return fig
-
-
-
-
-***********************************************************************
-    
-
-def timestep(path1,path2,pathdata,pathtr,paths,figname,
-              modelname1,modelname2,extentx,extenty,black,norm,transient,stepnorm1,
-              stepnorm2,merge):
-    
-    ###
-    description:
-    routine that plots both the transient and final crater dimensions for 
-    two different modelcases (modelcase 1 is shown in the left panel and 
-    modelcase 2 is shown in the right panel).
-    
-    This function is pratical if for example the same 
-    
-    inputs:
-    pathdata: path where the text files have been stored (text files that are obtained
-    from running the main.py script)
-    
-    folders: all modelcases that need to be plotted
-    
-    pathplots: saving plot directory
-    
-    example:
-    
-    # two different stepnorm, black, merge = False, 
-    
-    path1 = '/var/tmp/mysshfs/stallo/collapse/ART3/results/C00P30F06_L600/'
-    path2 = '/var/tmp/mysshfs/stallo/collapse/ART3/results/C00P30F06_L600/'
-    pathdata = '/media/nilscp/Zell/Collapse/data/'
-    pathtr = pathdata 
-    paths="/work/nilscp/tmp/"
-    
-    figname = ''
-    modelname1= r'C1-3, L = 600'
-    modelname2= r'C1-3, L = 600'
-    extentx=[0,1]
-    extenty=[-1,1]
-    norm = '/media/nilscp/Zell/Collapse/data/C00P30F06_L600/final/C00P30F06_L600_final.txt'
-    #norm = 2
-    transient = False
-    merge = False   
-    black = 1 # 1 (black) or 0 (white)
-    stepnorm1 = 10
-    stepnorm2 = 10
-    
-    timestep(path1,path2,pathdata,pathtr,paths,figname,
-              modelname1,modelname2,extentx,extenty,black,norm,transient,stepnorm1,
-              stepnorm2,merge)    
-    
-    
-    
-    norm = 0 # 0 (no normalization), normalization to a specific case (string to final .txt file),
-    # any other numbers (normalization to the rim-to-rim crater diameter )
-    
-
-    
-    # Figure
-    black = 1 # figure in black
-    black = 0 # figure in white
-    
-    # norm
-    norm = 0 nothing (normal in meters)
-    norm = 1 to Drim itself
-    norm = string to a specific case
-
-    
-    # if you want to plot the transient crater or not
-    transient = True
-    transient = False
-    
-    # stepnorm
-    The time where it takes the data
-    
-    #merge (should merge or not)
-    
-    
-    ## velocity
-    path1 = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/velocity/results/C00P10F06LONG_U04_L500/'
-    path2 = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/velocity/results/C00P10F06LONG_U08_L500/'
-    pathdata = '/run/media/nilscp/Zell/velocity/data/'
-    pathtr = pathdata 
-    paths="/work/nilscp/data/article3/velocity_variation/"
-    
-    figname = 'test'
-    modelname1= r'U = 1.6 km/s'
-    modelname2= r'U = 6.4 km/s'
-    extentx=[0,1]
-    extenty=[-1,1]
-    norm = '/run/media/nilscp/Zell/velocity/data/C00P10F06LONG_U64_L500/final/C00P10F06LONG_U64_L500_final.txt'
-    norm = 2
-    transient = False
-    merge = False   
-    black = 0 # 1 (black) or 0 (white)
-    stepnorm1 = 10
-    stepnorm2 = 10
-    
-    timestep(path1,path2,pathdata,pathtr,paths,figname,
-              modelname1,modelname2,extentx,extenty,black,norm,transient,stepnorm1,
-              stepnorm2,merge)    
-    
-        
-    ###
-    # check if path1 and path2 are similar, if yes we only load one of the path
-    if path1 == path2:
-        os.chdir(path1)
-        mod1 = psp.opendatfile('jdata.dat')
-        mod2 = psp.opendatfile('jdata.dat')
-        mm1 = path1.split('/')[-2]
-        mm2 = path2.split('/')[-2]
-    else:    
-        # load data for modelcase 1
-        os.chdir(path1)   
-        mod1=psp.opendatfile('jdata.dat')   
-        
-        # load data for modelcase 2
-        os.chdir(path2)   
-        mod2=psp.opendatfile('jdata.dat')
-        
-        mm1 = path1.split('/')[-2]
-        mm2 = path2.split('/')[-2]
-        
-    
-    if transient:
-        
-        # we add the directory pathtr only in case where the transient crater was not
-        # measured properly in the current modelcase (because of too coarse saving timesteps)
-                
-        if (pathtr != pathdata):
-            mtmp0 = path1.split('/')[-2]
-            mtmp1 = mtmp0.split('_L')[0]
-            mtmp2 = mtmp1.split('_')
-            mm1 = mtmp2[0] + '_TR_' + mtmp2[1] + '_L' + mtmp0.split('_L')[1]
-            
-            mtmp0 = path2.split('/')[-2]
-            mtmp1 = mtmp0.split('_L')[0]
-            mtmp2 = mtmp1.split('_')
-            mm2 = mtmp2[0] + '_TR_' + mtmp2[1] + '_L' + mtmp0.split('_L')[1]
-        else:
-            mm1 = path1.split('/')[-2]
-            mm2 = path2.split('/')[-2]
-                
-    os.chdir(pathtr + mm1 + '/transient/')
-    
-    #load data for the transient crater 1
-    t_tr1, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __  = np.loadtxt(mm1 + '_tr.txt',delimiter='\t',comments='#')
-    data_tr1 = np.loadtxt(mm1 + '_XYtransientprofile.txt',delimiter='\t',comments='#')
-    
-    # plotting of the transient crater (it would be nice to have it until drim_tr)        
-    os.chdir(pathtr + mm2 + '/transient/')
-    
-    #load data for the transient crater 2
-    t_tr2, da_tr2, Da_tr2, V_tr2, h_tr2, Dr_tr2, Vr_tr2, __  = np.loadtxt(mm2 + '_tr.txt',delimiter='\t',comments='#')
-    data_tr2 = np.loadtxt(mm2 + '_XYtransientprofile.txt',delimiter='\t',comments='#')
-    
-
-    os.chdir(pathdata + mm1 + '/final/')
-    
-    #get final rim-to-rim diameter 1
-    __, __, __, __, __, Drf1, __  = np.loadtxt(mm1 + '_final.txt',delimiter='\t',comments='#')
-    rinner1 = Drf1 /2.
-    
-    os.chdir(pathdata + mm1 + '/evolution/')
-    tdata = np.loadtxt(mm1 + '_data.txt',delimiter='\t',comments='#')
-    t1 = tdata[:,0]
-    tnorm1 = t1 / t_tr1
-
-    os.chdir(pathdata + mm2 + '/final/')
-    __, __, __, __, __, Drf2, __   = np.loadtxt(mm2 + '_final.txt',delimiter='\t',comments='#')
-    rinner2 = Drf2 /2.
-    
-    os.chdir(pathdata + mm2 + '/evolution/')
-    tdata2 = np.loadtxt(mm2 + '_data.txt',delimiter='\t',comments='#')
-    t2 = tdata2[:,0]
-    tnorm2 = t2 / t_tr2
-    
-    __, stp1 = find_nearest(tnorm1,stepnorm1)
-    __, stp2 = find_nearest(tnorm2,stepnorm2)
-            
-            
-    # each timestep are saved in the variable step
-    den = mod1.readStep('Den',stp1) 
-    step1 = copy.deepcopy(den)
-    
-    # time in crater evolution
-    time1 = np.around(step1.time,decimals=1)
-    
-    den2 = mod2.readStep('Den',stp2) 
-    step2 = copy.deepcopy(den2)
-    
-    # time in crater evolution
-    time2 = np.around(step2.time,decimals=1)
-
-    # plotting of the data
-    if black == 1:
-        fig=plt.figure(figsize=(12,6),facecolor='black')
-    else:
-        fig=plt.figure(figsize=(12,6))
-    
-    ax1=fig.add_subplot(121)
-    ax2=fig.add_subplot(122)
-    
-    if isinstance(norm, basestring):
-                
-        ax1.pcolormesh(-mod1.x/rinner1,mod1.y[::-1]/rinner1,step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-        ax2.pcolormesh(mod2.x/rinner1,mod2.y/rinner1,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-        
-        ax1.set_xlim([-1.2,0]) #-2000,0 ## -1500,1500
-        ax2.set_xlim([0,1.2])
-    
-        for ax in [ax1,ax2]:
-            ax.minorticks_off()
-            ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-            ax.set_ylim([-0.8,0.8])
-            
-        for u in range(mod1.tracer_numu):
-            tru=mod1.tru[u]
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.xlines),20):
-                ax1.plot(-step1.xmark[tru.xlines[l]]/rinner1,
-                        step1.ymark[tru.xlines[l]]/rinner1,
-                        c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-            
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.ylines),20):
-                ax1.plot(-step1.xmark[tru.ylines[l]]/rinner1,
-                         step1.ymark[tru.ylines[l]]/rinner1,
-                         c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                         
-        for u in range(mod2.tracer_numu):
-            tru=mod2.tru[u]
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.xlines),20):
-                ax2.plot(step2.xmark[tru.xlines[l]]/rinner1,
-                        step2.ymark[tru.xlines[l]]/rinner1,
-                        c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-            
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.ylines),20):
-                ax2.plot(step2.xmark[tru.ylines[l]]/rinner1,
-                         step2.ymark[tru.ylines[l]]/rinner1,
-                         c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-    else:        
-        if norm == 0:
-            ax1.pcolormesh(-mod1.x,mod1.y[::-1],step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            ax2.pcolormesh(mod2.x,mod2.y,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            
-            ax1.set_xlim([-extentx[1],extentx[0]]) #-2000,0 ## -1500,1500
-            ax2.set_xlim([extentx[0],extentx[1]])
-            
-            for ax in [ax1,ax2]:
-                ax.set_ylim([extenty[0],extenty[1]])
-                ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                
-            for u in range(mod1.tracer_numu):
-                tru=mod1.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax1.plot(-step1.xmark[tru.xlines[l]],
-                            step1.ymark[tru.xlines[l]],
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax1.plot(-step1.xmark[tru.ylines[l]],
-                             step1.ymark[tru.ylines[l]],
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                             
-            for u in range(mod2.tracer_numu):
-                tru=mod2.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax2.plot(step2.xmark[tru.xlines[l]],
-                            step2.ymark[tru.xlines[l]],
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax2.plot(step2.xmark[tru.ylines[l]],
-                             step2.ymark[tru.ylines[l]],
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-
-        else:
-            ax1.pcolormesh(-mod1.x/rinner1,mod1.y[::-1]/rinner1,step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            ax2.pcolormesh(mod2.x/rinner2,mod2.y/rinner2,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            
-            ax1.set_xlim([-1.2,0]) #-2000,0 ## -1500,1500
-            ax2.set_xlim([0,1.2])
-        
-            for ax in [ax1,ax2]:
-                ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                ax.set_ylim([-0.8,0.8])
- 
-            for u in range(mod1.tracer_numu):
-                tru=mod1.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax1.plot(-step1.xmark[tru.xlines[l]]/rinner1,
-                            step1.ymark[tru.xlines[l]]/rinner1,
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax1.plot(-step1.xmark[tru.ylines[l]]/rinner1,
-                             step1.ymark[tru.ylines[l]]/rinner1,
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                             
-            for u in range(mod2.tracer_numu):
-                tru=mod2.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax2.plot(step2.xmark[tru.xlines[l]]/rinner2,
-                            step2.ymark[tru.xlines[l]]/rinner2,
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax2.plot(step2.xmark[tru.ylines[l]]/rinner2,
-                             step2.ymark[tru.ylines[l]]/rinner2,
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)        
-                
-    if transient:
-        
-        # we add the directory pathtr only in case where the transient crater was not
-        # measured properly in the current modelcase (because of too coarse saving timesteps)
-                               
-        #Only show the transient crater profile for height lower than 500 m over the
-        # pre-impact surface
-        ij1 = np.where((data_tr1[:,1]<=500.) & (data_tr1[:,0]<=Dr_tr1/2.))
-        ij2 = np.where((data_tr2[:,1]<=500.) & (data_tr2[:,0]<=Dr_tr2/2.))
-        
-        if isinstance(norm, basestring):
-            ax2.plot(data_tr2[ij2[0],0]/rinner1,data_tr2[ij2[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-            ax1.plot(-data_tr1[ij1[0],0]/rinner1,data_tr1[ij1[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-            #plot boundary
-            ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc/rinner1,mod2.yc/rinner1,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-        elif norm == 0:
-            ax2.plot(data_tr2[ij2[0],0],data_tr2[ij2[0],1],color='b',linewidth=4,zorder=5)
-            ax1.plot(-data_tr1[ij1[0],0],data_tr1[ij1[0],1],color='b',linewidth=4,zorder=5)           
-            #plot boundary
-            ax1.contour(-mod1.xc,mod1.yc,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc,mod2.yc,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            
-        else:
-            ax2.plot(data_tr2[ij2[0],0]/rinner2,data_tr2[ij2[0],1]/rinner2,color='b',linewidth=4,zorder=5)
-            ax1.plot(-data_tr1[ij1[0],0]/rinner1,data_tr1[ij1[0],1]/rinner1,color='b',linewidth=4,zorder=5)
-            ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc/rinner2,mod2.yc/rinner2,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-    else:
-        if isinstance(norm, basestring):
-            #plot boundary
-            ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc/rinner1,mod2.yc/rinner1,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-        elif norm == 0:
-            #plot boundary
-            ax1.contour(-mod1.xc,mod1.yc,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc,mod2.yc,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)           
-        else:
-            ax1.contour(-mod1.xc/rinner1,mod1.yc/rinner1,step1.cmc[0],1,colors='r',linewidths=4,zorder=4)
-            ax2.contour(mod2.xc/rinner2,mod2.yc/rinner2,step2.cmc[0],1,colors='r',linewidths=4,zorder=4)
-    
-    ax2.yaxis.tick_right()       
-    if black == 1:
-        for ax in [ax1,ax2]:
-            ax.tick_params(axis='x', colors='white',labelsize=18)
-            ax.tick_params(axis='y', colors='white',labelsize=18)
-            ax.spines['bottom'].set_color('white')
-            ax.spines['top'].set_color('white')
-            ax.set_axis_bgcolor('black')
-            ax.spines['left'].set_color('white')
-            ax.spines['right'].set_color('white')
-            
-        ax1.spines['left'].set_color('white')
-        ax2.spines['right'].set_color('white')
-        
-    if (path1 != path2):    
-        fig.tight_layout()
-        fig.subplots_adjust(wspace=0.06, hspace=0.0)
-        if black == 1:
-            ax1.set_title(modelname1 + " , t = " + str(time1) + " s, $t/t_r$ = " + str(np.round(tnorm1[stp1],decimals=1)),color = 'white', position=(0.5, 0.9),fontsize=18)
-            ax2.set_title(modelname2 + " , t = " + str(time2) + " s, $t/t_r$ = " + str(np.round(tnorm2[stp2],decimals=1)),color = 'white', position=(0.5, 0.9),fontsize=18)
-        else:
-            ax1.set_title(modelname1 + " , t = " + str(time1) + " s, $t/t_r$ = " + str(np.round(tnorm1[stp1],decimals=1)),position=(0.5, 0.9),fontsize=18)
-            ax2.set_title(modelname2 + " , t = " + str(time2) + " s, $t/t_r$ = " + str(np.round(tnorm2[stp2],decimals=1)),position=(0.5, 0.9),fontsize=18)
-    
-    elif (merge and (path1 == path2)):
-        ax1.spines['right'].set_visible(False)
-        ax2.spines['left'].set_visible(False)
-        ax1.yaxis.set_ticks_position('left')
-        ax1.xaxis.set_ticks_position('bottom')
-        ax2.yaxis.set_ticks_position('right')
-        ax2.xaxis.set_ticks_position('bottom')
-        
-        if black == 1:
-            fig.tight_layout()
-            fig.subplots_adjust(wspace=0.00, hspace=0.0)       
-            fig.suptitle(modelname1 + " , t = " + str(time1) + " s, $t/t_r$ = " + str(np.round(tnorm1[stp1],decimals=1)),color = 'white',position=(0.5, 0.9),fontsize=24)
-        else:
-            fig.tight_layout()
-            fig.subplots_adjust(wspace=0.00, hspace=0.0)       
-            fig.suptitle(modelname2 + " , t = " + str(time2) + " s, $t/t_r$ = " + str(np.round(tnorm2[stp2],decimals=1)),position=(0.5, 0.9),fontsize=24)
-    else:
-        fig.tight_layout()
-        fig.subplots_adjust(wspace=0.06, hspace=0.0)
-        if black == 1:
-            ax1.set_title(modelname1 + " , t = " + str(time1) + " s, $t/t_r$ = " + str(np.round(tnorm1[stp1],decimals=1)),color = 'white', position=(0.5, 0.9),fontsize=18)
-            ax2.set_title(modelname2 + " , t = " + str(time2) + " s, $t/t_r$ = " + str(np.round(tnorm2[stp2],decimals=1)),color = 'white', position=(0.5, 0.9),fontsize=18)
-        else:
-            ax1.set_title(modelname1 + " , t = " + str(time1) + " s, $t/t_r$ = " + str(np.round(tnorm1[stp1],decimals=1)),position=(0.5, 0.9),fontsize=18)
-            ax2.set_title(modelname2 + " , t = " + str(time2) + " s, $t/t_r$ = " + str(np.round(tnorm2[stp2],decimals=1)),position=(0.5, 0.9),fontsize=18)
-    if black == 1:
-        figtitle= mm1 + "_" + mm2 + "_norm" + str(stepnorm1).zfill(3) + ".png"
-        fig.savefig(paths+figtitle,dpi=300,facecolor=fig.get_facecolor(), transparent=True)
-        plt.close()
-    else:
-        figtitle= mm1 + "_" + mm2 + "_norm" + str(stepnorm1).zfill(3) + ".png"
-        fig.savefig(paths+figtitle,dpi=300)
-        plt.close()
-    #plt.close()
-    
-    mod1.closeFile()
-    mod2.closeFile()
-        
-    return fig
-
-   
-
-def transient2(path1,path2,pathdata,paths,figname,
-              modelname1,modelname2,extentx,extenty,black,norm,merge):
-    
-    ###
-    description:
-    routine that plots both the transient and final crater dimensions for 
-    two different modelcases (modelcase 1 is shown in the left panel and 
-    modelcase 2 is shown in the right panel).
-    
-    This function is pratical if for example the same 
-    
-    inputs:
-    pathdata: path where the text files have been stored (text files that are obtained
-    from running the main.py script)
-    
-    folders: all modelcases that need to be plotted
-    
-    pathplots: saving plot directory
-    
-    example:
-    
-    
-    path = '/media/nilscp/Cloud/SENS/PORFRIC/results/'
-    path1 = '/media/nilscp/Cloud/SENS/COH/results/C01P20F06_L500/'
-    path2 = '/media/nilscp/Cloud/SENS/COH/results/C05P20F06_L500/'
-    
-    
-    # two different stepnorm, black, merge = False, 
-    
-    pathdata = '/media/nilscp/Cloud/SENS/data/'
-    paths="/work/nilscp/tmp/"   
-    norm = '/media/nilscp/Cloud/SENS/data/C00P20F06_L500/transient/C00P20F06_L500_tr.txt'
-    modelname1 = r'$Y_0 = 100 kPa , L = 500 m$'
-    modelname2 = r'$Y_0 = 500 kPa, L = 500 m$'
-    extentx = [0,0]
-    extenty = [0,0]
-    black = 1
-    merge = False
-    figname = ''
-    
-    transient2(path1,path2,pathdata,paths,figname,
-              modelname1,modelname2,extentx,extenty,black,norm,merge)
-              
-    norm = 0 # 0 (no normalization), normalization to a specific case (string to final .txt file),
-    # any other numbers (normalization to the rim-to-rim crater diameter )
-    
-
-    
-    # Figure
-    black = 1 # figure in black
-    black = 0 # figure in white
-    
-    # norm
-    norm = 0 nothing (normal in meters)
-    norm = 1 to Drim itself
-    norm = string to a specific case
-
-    
-    # if you want to plot the transient crater or not
-    transient = True
-    transient = False
-    
-    # stepnorm
-    The time where it takes the data
-    
-    #merge (should merge or not)
-    
-        
-    ###
-    # check if path1 and path2 are similar, if yes we only load one of the path
-    if path1 == path2:
-        os.chdir(path1)
-        mod1 = psp.opendatfile('jdata.dat')
-        mod2 = psp.opendatfile('jdata.dat')
-        mm1 = path1.split('/')[-2]
-        mm2 = path2.split('/')[-2]
-    else:    
-        # load data for modelcase 1
-        os.chdir(path1)   
-        mod1=psp.opendatfile('jdata.dat')   
-        
-        # load data for modelcase 2
-        os.chdir(path2)   
-        mod2=psp.opendatfile('jdata.dat')
-        
-        mm1 = path1.split('/')[-2]
-        mm2 = path2.split('/')[-2]
-        
-            
-    # we add the directory pathtr only in case where the transient crater was not
-    # measured properly in the current modelcase (because of too coarse saving timesteps)
-    mm1 = path1.split('/')[-2]
-    mm2 = path2.split('/')[-2]
-            
-    os.chdir(pathdata + mm1 + '/transient/')
-    
-    #load data for the transient crater 1
-    t_tr1, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __  = np.loadtxt(mm1 + '_tr.txt',delimiter='\t',comments='#')
-    Da_tr1 = Da_tr1 /2. 
-    
-    # plotting of the transient crater (it would be nice to have it until drim_tr)        
-    os.chdir(pathdata + mm2 + '/transient/')
-    
-    #load data for the transient crater 2
-    t_tr2, da_tr2, Da_tr2, V_tr2, h_tr2, Dr_tr2, Vr_tr2, __  = np.loadtxt(mm2 + '_tr.txt',delimiter='\t',comments='#')
-    Da_tr2 = Da_tr2 /2. 
-    
-    os.chdir(pathdata + mm1 + '/evolution/')
-    tdata = np.loadtxt(mm1 + '_data.txt',delimiter='\t',comments='#')
-    t1 = tdata[:,0]
-    tnorm1 = t1 / t_tr1
-    
-    os.chdir(pathdata + mm2 + '/evolution/')
-    tdata2 = np.loadtxt(mm2 + '_data.txt',delimiter='\t',comments='#')
-    t2 = tdata2[:,0]
-    tnorm2 = t2 / t_tr2
-    
-    __, stp1 = find_nearest(tnorm1,1.0)
-    __, stp2 = find_nearest(tnorm2,1.0)
-            
-            
-    # each timestep are saved in the variable step
-    den = mod1.readStep('Den',stp1) 
-    step1 = copy.deepcopy(den)
-    
-    # time in crater evolution
-    time1 = np.around(step1.time,decimals=1)
-    
-    den2 = mod2.readStep('Den',stp2) 
-    step2 = copy.deepcopy(den2)
-    
-    # time in crater evolution
-    time2 = np.around(step2.time,decimals=1)
-
-    # plotting of the data
-    if black == 1:
-        fig=plt.figure(figsize=(12,6),facecolor='black')
-    else:
-        fig=plt.figure(figsize=(12,6))
-    
-    ax1=fig.add_subplot(121)
-    ax2=fig.add_subplot(122)
-    
-    if isinstance(norm, basestring):
-        
-        t_tr, da_tr, Da_tr, V_tr, h_tr, Dr_tr, Vr_tr, __  = np.loadtxt(norm,delimiter='\t',comments='#')
-        Da_tr = Da_tr /2.
-        
-        ax1.pcolormesh(-mod1.x/Da_tr,mod1.y[::-1]/Da_tr,step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-        ax2.pcolormesh(mod2.x/Da_tr,mod2.y/Da_tr,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-        
-        ax1.set_xlim([-2.0,0]) #-2000,0 ## -1500,1500
-        ax2.set_xlim([0,2.0])
-    
-        for ax in [ax1,ax2]:
-            ax.minorticks_off()
-            ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-            ax.set_ylim([-1.2,0.8])
-            
-        for u in range(mod1.tracer_numu):
-            tru=mod1.tru[u]
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.xlines),20):
-                ax1.plot(-step1.xmark[tru.xlines[l]]/Da_tr,
-                        step1.ymark[tru.xlines[l]]/Da_tr,
-                        c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-            
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.ylines),20):
-                ax1.plot(-step1.xmark[tru.ylines[l]]/Da_tr,
-                         step1.ymark[tru.ylines[l]]/Da_tr,
-                         c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                         
-        for u in range(mod2.tracer_numu):
-            tru=mod2.tru[u]
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.xlines),20):
-                ax2.plot(step2.xmark[tru.xlines[l]]/Da_tr,
-                        step2.ymark[tru.xlines[l]]/Da_tr,
-                        c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-            
-            # Plot the tracers in horizontal lines, every 20 lines
-            for l in arange(0,len(tru.ylines),20):
-                ax2.plot(step2.xmark[tru.ylines[l]]/Da_tr,
-                         step2.ymark[tru.ylines[l]]/Da_tr,
-                         c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-    else:        
-        if norm == 0:
-            ax1.pcolormesh(-mod1.x,mod1.y[::-1],step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            ax2.pcolormesh(mod2.x,mod2.y,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            
-            ax1.set_xlim([-extentx[1],extentx[0]]) #-2000,0 ## -1500,1500
-            ax2.set_xlim([extentx[0],extentx[1]])
-            
-            for ax in [ax1,ax2]:
-                ax.set_ylim([extenty[0],extenty[1]])
-                ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                
-            for u in range(mod1.tracer_numu):
-                tru=mod1.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax1.plot(-step1.xmark[tru.xlines[l]],
-                            step1.ymark[tru.xlines[l]],
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax1.plot(-step1.xmark[tru.ylines[l]],
-                             step1.ymark[tru.ylines[l]],
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                             
-            for u in range(mod2.tracer_numu):
-                tru=mod2.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax2.plot(step2.xmark[tru.xlines[l]],
-                            step2.ymark[tru.xlines[l]],
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax2.plot(step2.xmark[tru.ylines[l]],
-                             step2.ymark[tru.ylines[l]],
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-
-        else:
-            ax1.pcolormesh(-mod1.x/Da_tr1,mod1.y[::-1]/Da_tr1,step1.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            ax2.pcolormesh(mod2.x/Da_tr2,mod2.y/Da_tr2,step2.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            
-            ax1.set_xlim([-2.0,0]) #-2000,0 ## -1500,1500
-            ax2.set_xlim([0,2.0])
-        
-            for ax in [ax1,ax2]:
-                ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                ax.set_ylim([-1.2,0.8])
- 
-            for u in range(mod1.tracer_numu):
-                tru=mod1.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax1.plot(-step1.xmark[tru.xlines[l]]/Da_tr1,
-                            step1.ymark[tru.xlines[l]]/Da_tr1,
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax1.plot(-step1.xmark[tru.ylines[l]]/Da_tr1,
-                             step1.ymark[tru.ylines[l]]/Da_tr1,
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                             
-            for u in range(mod2.tracer_numu):
-                tru=mod2.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax2.plot(step2.xmark[tru.xlines[l]]/Da_tr2,
-                            step2.ymark[tru.xlines[l]]/Da_tr2,
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax2.plot(step2.xmark[tru.ylines[l]]/Da_tr2,
-                             step2.ymark[tru.ylines[l]]/Da_tr2,
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)        
-                        
-    # we add the directory pathtr only in case where the transient crater was not
-    # measured properly in the current modelcase (because of too coarse saving timesteps)
-                           
-    #Only show the transient crater profile for height lower than 500 m over the
-    # pre-impact surface
-
-    if isinstance(norm, basestring):
-        ax1.contour(-mod1.xc/Da_tr,mod1.yc/Da_tr,step1.cmc[0],1,colors='b',linewidths=4,zorder=4)
-        ax2.contour(mod2.xc/Da_tr,mod2.yc/Da_tr,step2.cmc[0],1,colors='b',linewidths=4,zorder=4)
-        ax1.hlines(0,-2,0,'r',linewidths=4,zorder=-10)
-        ax2.hlines(0,0,2,'r',linewidths=4,zorder=-10)
-
-    elif norm == 0:
-        ax1.contour(-mod1.xc,mod1.yc,step1.cmc[0],1,colors='b',linewidths=4,zorder=4)
-        ax2.contour(mod2.xc,mod2.yc,step2.cmc[0],1,colors='b',linewidths=4,zorder=4)
-        ax1.hlines(0,-extentx[1],extentx[0],'r',linewidths=4,zorder=-10)
-        ax2.hlines(0,extentx[0],extentx[1],'r',linewidths=4,zorder=-10)
-        
-    else:
-        ax1.contour(-mod1.xc/Da_tr1,mod1.yc/Da_tr1,step1.cmc[0],1,colors='b',linewidths=4,zorder=4)
-        ax2.contour(mod2.xc/Da_tr2,mod2.yc/Da_tr2,step2.cmc[0],1,colors='b',linewidths=4,zorder=4)
-        ax1.hlines(0,-2,0,'r',linewidths=4,zorder=-10)
-        ax2.hlines(0,0,2,'r',linewidths=4,zorder=-10)
-
-    
-    ax2.yaxis.tick_right()       
-    if black == 1:
-        for ax in [ax1,ax2]:
-            ax.tick_params(axis='x', colors='white',labelsize=18)
-            ax.tick_params(axis='y', colors='white',labelsize=18)
-            ax.spines['bottom'].set_color('white')
-            ax.spines['top'].set_color('white')
-            ax.set_axis_bgcolor('black')
-            ax.spines['left'].set_color('white')
-            ax.spines['right'].set_color('white')
-            
-        ax1.spines['left'].set_color('white')
-        ax2.spines['right'].set_color('white')
-        
-    if (path1 != path2):    
-        fig.tight_layout()
-        fig.subplots_adjust(wspace=0.06, hspace=0.0)
-        if black == 1:
-            l = ax1.set_title(modelname1 + " , t = " + str(time1) + " s",color = 'white', position=(0.5, 0.9),fontsize=18)
-            l2 = ax2.set_title(modelname2 + " , t = " + str(time2) + " s",color = 'white', position=(0.5, 0.9),fontsize=18)
-            l.set_zorder(20)
-            l2.set_zorder(20)
-        else:
-            l = ax1.set_title(modelname1 + " , t = " + str(time1) + " s",position=(0.5, 0.9),fontsize=18)
-            l2 = ax2.set_title(modelname2 + " , t = " + str(time2) + " s",position=(0.5, 0.9),fontsize=18)
-            l.set_zorder(20)
-            l2.set_zorder(20)
-    elif (merge and (path1 == path2)):
-        ax1.spines['right'].set_visible(False)
-        ax2.spines['left'].set_visible(False)
-        ax1.yaxis.set_ticks_position('left')
-        ax1.xaxis.set_ticks_position('bottom')
-        ax2.yaxis.set_ticks_position('right')
-        ax2.xaxis.set_ticks_position('bottom')
-        
-        if black == 1:
-            fig.tight_layout()
-            fig.subplots_adjust(wspace=0.00, hspace=0.0)       
-            fig.suptitle(modelname1 + " , t = " + str(time1) + " s",color = 'white',position=(0.5, 0.9),fontsize=24)
-        else:
-            fig.tight_layout()
-            fig.subplots_adjust(wspace=0.00, hspace=0.0)       
-            fig.suptitle(modelname2 + " , t = " + str(time2) + " s",position=(0.5, 0.9),fontsize=24)
-    else:
-        fig.tight_layout()
-        fig.subplots_adjust(wspace=0.06, hspace=0.0)
-        if black == 1:
-            l = ax1.set_title(modelname1 + " , t = " + str(time1) + " s",color = 'white', position=(0.5, 0.9),fontsize=18)
-            l2 = ax2.set_title(modelname2 + " , t = " + str(time2) + " s",color = 'white', position=(0.5, 0.9),fontsize=18)
-            l.set_zorder(20)
-            l2.set_zorder(20)
-        else:
-            l = ax1.set_title(modelname1 + " , t = " + str(time1) + " s" ,position=(0.5, 0.9),fontsize=18)
-            l2 = ax2.set_title(modelname2 + " , t = " + str(time2) + " s" ,position=(0.5, 0.9),fontsize=18)
-            l.set_zorder(20)
-            l2.set_zorder(20)
-            #ax1.set_zorder(100)
-            #ax2.set_zorder(100)
-    if black == 1:
-        figtitle= mm1 + "_" + mm2 + "_transient" + ".png"
-        fig.savefig(paths+figtitle,dpi=300,facecolor=fig.get_facecolor(), transparent=True)
-        plt.close()
-    else:
-        figtitle= mm1 + "_" + mm2 + "_transient" + ".png"
-        fig.savefig(paths+figtitle,dpi=300)
-        plt.close()
-    #plt.close()
-    
-    mod1.closeFile()
-    mod2.closeFile()
-        
-    return fig
-
-
-
-def evoplottr(path1,paths, path1tr, pathstr, norm, extentx, extenty, lbl):
-    
-    ###
-    path1 = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/layering/AUG/collapse/results/C00P10F06LONG_L500/'
-    paths = '/run/media/nilscp/Zell/Collapse/data/C00P10F06LONG_L500/'
-    path1tr = '/uio/kant/geo-ceed-u1/nilscp/Desktop/stallo_work/layering/AUG/collapse/results/C00P10F07LONG_L500/'
-    pathstr = '/run/media/nilscp/Zell/Collapse/data/C00P10F07LONG_L500/'
-    
-    
-    
-    path1 = '/run/media/nilscp/Cloud/SENS/COH/results/C01P10F06_L100/'
-    paths = '/run/media/nilscp/Cloud/SENS/data/C01P10F06_L100/'
-    path1tr =  '/run/media/nilscp/Cloud/SENS/PORFRIC/results/C00P10F06_L100/'
-    pathstr = '/run/media/nilscp/Cloud/SENS/data/C00P10F06_L100/'
-    norm = 2
-    extentx = [0, 5000]
-    extenty = [-3000,1500]
-    lbl = r"$ Y_0 = 100 kPa, \mathit{L} = 100 m$"
-    
-    evoplottr(path1,paths, path1tr, pathstr, norm, extentx, extenty, lbl)
-    ###
-        
-    os.chdir(path1)
-    mod1 = psp.opendatfile('jdata.dat')
-        
-    modelname = path1.split('/')[-2]
-    
-    if not os.path.exists(paths + 'plots'):
-        os.makedirs(paths + 'plots')
-        
-    if norm == 1:                
-        os.chdir(paths + '/transient/')
-        
-        #load data for the transient crater 1
-        t_trg, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __  = np.loadtxt(modelname + '_tr.txt',delimiter='\t',comments='#')
-        Ra_tr1 = Da_tr1 / 2.
-        
-        
-    elif norm == 2:
-        
-        os.chdir(paths + '/transient/')
-        
-        #load data for the transient crater 
-        t_trg, __, __, __, __, __, __, __  = np.loadtxt(modelname + '_tr.txt',delimiter='\t',comments='#')
-        
-        
-        modelnametr = pathstr.split('/')[-2]                                                
-        os.chdir(pathstr + '/transient/')
-                                               
-        #load data for the transient crater modtr
-        t_tr1, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __  = np.loadtxt(modelnametr + '_tr.txt',delimiter='\t',comments='#')
-        Ra_tr1 = Da_tr1 / 2.
-        
-        
-    else:
-        os.chdir(paths + '/transient/')
-        
-        #load data for the transient crater 1
-        t_trg, da_tr1, Da_tr1, V_tr1, h_tr1, Dr_tr1, Vr_tr1, __  = np.loadtxt(modelname + '_tr.txt',delimiter='\t',comments='#')
-        
-        
-        os.chdir(paths + '/evolution/')
-        tdata = np.loadtxt(modelname + '_data.txt',delimiter='\t',comments='#')
-        t1 = tdata[:,0]
-        tnorm1 = t1 / t_trg
-        print np.max(tnorm1)
-        __, stp1 = find_nearest(tnorm1,10)
-        
-    os.chdir(path1)       
-    for i in range(mod1.nsteps):
-        step=mod1.readStep('Den',i)
-    
-        t1 = step.time       
-        # plotting of the data
-        fig=plt.figure(figsize=(6,6))        
-        ax1=fig.add_subplot(111)
-        
-        if norm >= 1:
-            
-            ax1.pcolormesh(mod1.x/Ra_tr1,mod1.y/Ra_tr1,step.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            ax1.contour(mod1.xc/Ra_tr1,mod1.yc/Ra_tr1,step.cmc[0],1,colors='b',linewidths=4,zorder=4)
-            ax1.hlines(0,0,1.2,'r',linewidths=4,zorder=1)
-            ax1.set_xlim([0,1.2]) #-2000,0 ## -1500,1500
-        
-            for ax in [ax1]:
-                ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                ax.set_ylim([-0.8,0.8])
-                
-            for u in range(mod1.tracer_numu):
-                tru=mod1.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax1.plot(step.xmark[tru.xlines[l]]/Ra_tr1,
-                            step.ymark[tru.xlines[l]]/Ra_tr1,
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax1.plot(step.xmark[tru.ylines[l]]/Ra_tr1,
-                             step.ymark[tru.ylines[l]]/Ra_tr1,
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                    
-        else:       
-            ax1.pcolormesh(mod1.x,mod1.y,step.mat,cmap='BrBG_r',vmin=-5., vmax = 5., zorder=2)
-            ax1.contour(mod1.xc,mod1.yc,step.cmc[0],1,colors='b',linewidths=4,zorder=4)
-            ax1.hlines(0,0,extentx[1],'r',linewidths=4,zorder=1)               
-            ax1.set_xlim([extentx[0],extentx[1]]) #-2000,0 ## -1500,1500
-            
-            for ax in [ax1]:
-                ax.set_ylim([extenty[0],extenty[1]])
-                ax.minorticks_off()
-                ax.tick_params('both', labelsize=16,length=10, width=2., which='major')
-                
-            for u in range(mod1.tracer_numu):
-                tru=mod1.tru[u]
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.xlines),20):
-                    ax1.plot(step.xmark[tru.xlines[l]],
-                            step.ymark[tru.xlines[l]],
-                            c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                
-                # Plot the tracers in horizontal lines, every 20 lines
-                for l in arange(0,len(tru.ylines),20):
-                    ax1.plot(step.xmark[tru.ylines[l]],
-                             step.ymark[tru.ylines[l]],
-                             c='k',marker='.',linestyle='None',markersize=1.0,zorder=3)
-                                
-        if norm == 0:
-            ax.set_xlabel('x (m)', fontsize = 20)
-            ax.set_ylabel('y (m)', fontsize = 20)
-            fig.tight_layout()
-            
-        else:
-            ax.set_xlabel(r'$x / R_t_c$', fontsize = 20)
-            ax.set_ylabel(r'$y / R_t_c$', fontsize = 20)
-            fig.tight_layout()  
-        
-        
-        ax1.set_title(r"$\mathit{t} = " + str(np.around(t1,decimals=2)) + " " +" s, $" + " " + "$\zeta$ = " + str(np.around(t1/t_trg,decimals=2)),position=(0.5, 0.9),fontsize=18)
-        st = fig.suptitle(lbl, fontsize=22)
-        st.set_y(0.97)
-        st.set_x(0.55)
-        fig.subplots_adjust(top=0.9)
-        
-        if norm == 0:
-            figtitle= modelname + '_' + str(int(i)).zfill(3)+ ".png"
-            fig.savefig(paths+ 'plots/' + figtitle,dpi=300)
-        else:
-            figtitle= 'norm_' + modelname + '_' + str(int(i)).zfill(3)+ ".png"
-            fig.savefig(paths+ 'plots/' + figtitle,dpi=300)
-        plt.close()
-        
-    mod1.closeFile()
-            
-
-
-
-***********************************************************************
 '''
+
+
+'''
+example:
+param = 'Por'
+paths = '/run/media/nilscp/Squall/benchmarkFI/CPPR10/data/CDILWPO_L100/'
+zoom_id = ['mid', 'hires']
+
+fld_param, fld_name, fld_cmap, fld_unit, fld_factor, npath = field_definition(model, zoom_id, paths, param = 'all')
+
+#Updated field_definition the 24th June 2019
+
+
+
+fld = np.array(['Cm1', 'Cm2', 'Den', 'Tmp', 'Pre', 'Sie', 'Yld',
+                'Dam', 'Alp', 'TPS', 'YAc'])
+
+fld_param = np.array(['Cm1', 'Cm2', 'Den', 'Tmp', 'Pre', 'Sie', 'Yld',
+                      'Dam', 'Alp', 'TPS', 'YAc'])
+
+fld_name = np.array(['material 1', 'material 2', 'density', 'temperature', 'pressure', 'sie',
+                     'YS', 'damage', 'distension', 'TPS',
+                     'YAc'])
+
+fld_folder = np.array(['Cm1', 'Cm2', 'Density', 'Temperature', 'Pressure', 'Specific_internal_energy',
+                       'Yield_strength', 'Damage', 'Distension', 'Total_plastic_strain',
+                       'Acoustic_fluidisation_strength'])
+
+fld_cmap = np.array(['BrBG_r', 'BrBG_r', 'viridis', 'autumn', 'bwr', 'bwr',
+                     'summer', 'winter', 'gray_r', 'Reds_r',
+                     'summer'])
+
+fld_unit = np.array(['Conc. material','Conc. material','kg/m^{3}', 'Kelvin', 'GPa', 'MJ',
+                     'GPa', 'Damage', 'Distention', 'Strain',
+                     'MPa'])
+
+fld_factor = np.array([1., 1., 1., 1., 1e9, 1e6, 1e9, 1., 1., 1., 1e6])
+
+'''
+
+
