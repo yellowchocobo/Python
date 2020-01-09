@@ -1,33 +1,5 @@
 # -*- coding: utf-8 -*-
 
-'''
-******************************************************************************
-
-     =========================================================================
-     Subroutine to plot results
-
-
-     Description                                     Programmer    Date
-     ------------------------------------------------------------------
-     Original version (1.0).............................NCP  2017/08/XX
-     Improved version (2.0)   ..........................NCP  2017/22/11   
-    ==========================================================================
-    
-    The version 2.0 includes:
-    - a better description of functions
-    - changed the name of some function (except main and craterdimensions)
-    - functions:
-    
-    
-    
-    ==========================================================================
-    
-    Need to update this script. We now save the final crater dimensions for
-    t/tr = 10 so it's easier to download it
-
-******************************************************************************
-'''
-
 # loading of basic Python's module
 import numpy as np
 import os
@@ -35,6 +7,7 @@ import sys
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import matplotlib.gridspec as gridspec
+from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 import glob
 
 
@@ -459,8 +432,8 @@ def zoom(model, zoom_level, scaling_factor):
             print ("zoom level not recognized. Please choose from complete grid"
                    ", hires_grid, medium, close_up or specify values as tuple")
             
-            
     return ((extentx, extenty))
+
     
     
 '''
@@ -713,6 +686,10 @@ def normalize(jdata, model, path_tosave, norm, norm_tend):
     elif norm == 3:
         scaling_factor = getTransientvalues(path_tosave, modelname, norm_tend)[-2]
         
+    # scale by a certain value (if for example if you want to change m to km)
+    elif norm == 4:
+        scaling_factor = 1000.0
+        
     # normalized by the final rim-to-rim crater diameter of another crater
     else:
         try:
@@ -731,10 +708,28 @@ def normalize(jdata, model, path_tosave, norm, norm_tend):
 def getTransientcrossSection(path_tosave, modelname):
     
     '''
-    In case for showTransient
+    get transient crater cross sections and return the x and y coordinates for
+    the surface. Only values smaller than the apparent crater diameter are shown
     '''
     
-    None
+    try:
+        path = os.path.join(path_tosave, modelname, 'crossSections')
+        fname = os.path.join(path, 'crossSection_tnorm_1.txt')
+        data = np.loadtxt(fname,
+                          delimiter='\t', comments='#')
+        
+        transient_app_diameter = getTransientvalues(path_tosave, modelname)[3]
+        
+        X = data[:, 0]
+        Y = data[:, 1]
+
+        return (X[X <= transient_app_diameter /2.0], 
+                Y[X <= transient_app_diameter /2.0])          
+                                              
+    except:
+        if os.path.isdir(path):
+            print ('the cross section for the transient crater '
+                   'has not yet been generated')
 
 
 '''
@@ -745,6 +740,8 @@ def time_lbl(path_tosave, modelname, time, norm):
     
     '''
     Need to modify this part if you don't want to plot the time and norm time
+    
+    what if we want to have the time related to the penetration time?
     '''
     
     tr_time = getTransientvalues(path_tosave, modelname)[0]
@@ -785,6 +782,8 @@ def figurename(jdata, path_tosave, step, param, norm, zoom_level):
     : path_tosave :
     : param :
     : norm :
+        
+    dual 
     '''
     
     # modelname
@@ -797,7 +796,7 @@ def figurename(jdata, path_tosave, step, param, norm, zoom_level):
     S = str(step).zfill(3)
     
     # normalization name
-    if norm == 0:
+    if ((norm == 0) or (norm == 4)):
         N = "NORMA"                
     elif norm == 1:
         N = "RPROJ" 
@@ -843,11 +842,208 @@ def figurename(jdata, path_tosave, step, param, norm, zoom_level):
 '''
 ***********************************************************************
 ''' 
+def adjust_ticks_and_labels(axes, x_lbl, y_lbl):
+    
+    '''
+    detect automatically if one or two axes
+    
+    '''
+    
+    try:
+        n = len(axes)       
+    except:
+        n = 1
+        axes = [axes]
+  
+    
+    # remove division in the middle for dual plots
+    if n == 2:
+        ax1, ax2 = axes
+        ax1.spines['right'].set_visible(False)
+        ax2.spines['left'].set_visible(False)
+        ax1.yaxis.set_label_position("left")
+        ax2.yaxis.set_label_position("right")
+        ax1.set_ylabel(y_lbl, fontsize=16, labelpad=-26) #r"$y / R_{r}$"
+        ax2.set_ylabel(y_lbl, rotation=270, fontsize=16, labelpad=-10) #r"$y / R_{r}$"
+        ax2.set_xlabel(x_lbl, fontsize=16)
 
-def crater(jdata, path_tosave, steps, params, norm, zoom_level, vmin, vmax, title_lbl,
+    else:
+        None
+                
+    # set labelsize to 14
+    for ax in axes:
+        ax.minorticks_off()
+        ax.tick_params('both', labelsize=14, length=5)
+        
+        # set labels
+        ax.set_xlabel(x_lbl, fontsize=16)
+
+'''
+***********************************************************************
+'''     
+def adjust_time(axes, t_lbl):
+    
+    '''
+    detect automatically if one ax or two axes
+
+    
+
+    Parameters
+    ----------
+    axes : TYPE
+        DESCRIPTION.
+    t_lbl : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    '''
+    
+    try:
+        n = len(axes)       
+    except:
+        n = 1
+        ax = axes
+    
+    # if dual, it would be better to put the time in the middle
+    if n == 2:
+        ax1, ax2 = axes
+        ax2.set_title('blablabla', position=(0.0, 0.9), fontsize=18)
+    else:
+        ax.set_title(t_lbl, position=(0.5, 0.9), fontsize=18)
+
+'''
+***********************************************************************
+''' 
+
+def adjust_zoom(axes, extentx, extenty):
+    
+    '''
+    '''
+    
+    
+    try:
+        n = len(axes)       
+    except:
+        n = 1
+        ax = axes
+    
+    if n == 2:
+        ax1, ax2 = axes
+        
+        ax1.set_xlim((-extentx[1], extentx[0]))
+        ax2.set_xlim(extentx)
+        
+        ax1.set_ylim(extenty)
+        ax2.set_ylim(extenty) 
+        
+    else:
+        ax.set_xlim(extentx)
+        ax.set_ylim(extenty)        
+        
+'''
+***********************************************************************
+'''     
+def adjust_colorbar(fig, ax, pco, sign, colormap_lbl, dual):
+    
+    '''
+    Adjust colorbar depending on type of plot    
+    '''
+    
+    # colorbar, colorbar positioning 
+    ax1_divider = make_axes_locatable(ax)
+    if sign > 0:
+        if dual:
+            ax.yaxis.tick_right() # maybe should go somewhere else
+            cax = ax1_divider.append_axes("right", size="5%", pad="15%")
+            cbar = fig.colorbar(pco, cax=cax)
+            cax.yaxis.set_ticks_position("right")
+            cbar.ax.set_title('$' + colormap_lbl + '$', fontsize=14)
+        else:
+            cbar = fig.colorbar(pco)
+            cbar.ax.set_title('$' + colormap_lbl + '$', fontsize=14)
+    else:
+        
+        cax = ax1_divider.append_axes("left", size="5%", pad="15%")
+        cbar = fig.colorbar(pco, cax=cax)
+        cax.yaxis.set_ticks_position("left")
+        cbar.ax.set_title('$' + colormap_lbl + '$', fontsize=14)
+        #cbar.set_label('$' + colormap_lbl + '$', labelpad=-6.0, 
+        #       y=1.07, fontsize=14, rotation=0)
+        
+    cbar.ax.tick_params(labelsize=14)
+    
+'''
+***********************************************************************
+''' 
+
+def p(path_tosave, modelname, model, step, iparam, fig, ax, scaling_factor, 
+      vmin, vmax, colormap, colormap_lbl, param_unit_factor, sign, 
+      stepiSALE, stepTransient, dual, 
+      showSurface, showTransient, showTracers):
+    
+    # plot data
+    pco = ax.pcolormesh(sign * model.x/scaling_factor, 
+                         model.y/scaling_factor, 
+                         step.data[iparam]/param_unit_factor,
+                             vmin=vmin,
+                             vmax=vmax,
+                             cmap=colormap, zorder=2)
+    
+    # showing surface
+    if showSurface:
+        ax.contour(sign * model.xc/scaling_factor, 
+                    model.yc/scaling_factor,
+                    step.cmc[0], 1, colors='k', linewidths=2, 
+                    zorder=4)
+    
+    # showing transient only if below transient
+    if showTransient:
+        if stepiSALE < stepTransient:
+            None
+        else:
+            # this values need to be scaled
+            xtr_surf, ytr_surf = getTransientcrossSection(path_tosave, modelname)
+            
+            ax.plot(sign * xtr_surf/scaling_factor, ytr_surf/scaling_factor,
+                'r', linewidth=2, zorder=5)
+    
+    # showing tracers        
+    if showTracers:                    
+        for u in range(model.tracer_numu):
+            tru = model.tru[u]
+            # Plot the tracers in horizontal lines, every 20 lines
+            for l in np.arange(0, len(tru.xlines), showTracers):
+                ax.plot(sign *step.xmark[tru.xlines[l]]/scaling_factor,
+                         step.ymark[tru.xlines[l]]/scaling_factor,
+                         c='k', marker='.', linestyle='None', 
+                         markersize=1.0, zorder=3)
+
+            # Plot the tracers as vertical lines, every 20 lines
+            for l in np.arange(0, len(tru.ylines), showTracers):
+                ax.plot(sign *step.xmark[tru.ylines[l]]/scaling_factor,
+                         step.ymark[tru.ylines[l]]/scaling_factor,
+                         c='k', marker='.', linestyle='None', 
+                         markersize=1.0, zorder=3)
+                
+    
+    # colorbar, colorbar positioning 
+    adjust_colorbar(fig, ax, pco, sign, colormap_lbl, dual)
+    
+    
+    return (pco)
+    
+        
+
+    
+
+def field(jdata, path_tosave, steps, params, norm, zoom_level, vmin, vmax, title_lbl,
            x_lbl, y_lbl,
-           colormap, colormap_lbl, param_unit_factor = 1.0, 
+           colormap, colormap_lbl, param_unit_factor = 1.0,
            showhline = False, showTransient = False, showSurface = False, 
+           showTracers = False, dual = False,
            norm_tend = -5.0):
     
     '''
@@ -872,6 +1068,8 @@ def crater(jdata, path_tosave, steps, params, norm, zoom_level, vmin, vmax, titl
     : showhline (flag):
     : showTransient (flag):
     : showSurface (flag):
+    : showTracers (flag) to add
+    : dual (flag) to add
         
     returns:
     plot(s) in path_tosave
@@ -893,9 +1091,25 @@ def crater(jdata, path_tosave, steps, params, norm, zoom_level, vmin, vmax, titl
     showhline = True
     showTransient = True
     showSurface = True
+    showTracers = 'int' (number of tracers space between) or False
     colormap_lbl = 'kg/m^{3}'
     crater(jdata, path_tosave, steps, params, norm, zoom_level, vmin, vmax, title_lbl,
-           x_lbl, y_lbl, colormap, colormap_lbl, 1.0, showhline, showTransient, showSurface)
+           x_lbl, y_lbl, colormap, colormap_lbl, 1.0, 1.0, showhline, showTransient, showSurface, showTracers)
+    
+    What if we want to plot only the cmc, it is a bit tricky:
+        could have a list of parameters Cm1, Cm2 and so forth..
+        automatically detect all the Cm fieldvar and merge it to a single array
+        
+    cmc = []
+    nmat = []
+    values = []
+    for i, j in model.fieldlist:
+        if i.startswith('Cm'):
+            cmc.append(i)
+            nmat.append(i[-1])
+    
+    step.readStep
+    # not sure because it can be percentage of materials
     '''
     
     # figures does not pop up
@@ -927,35 +1141,130 @@ def crater(jdata, path_tosave, steps, params, norm, zoom_level, vmin, vmax, titl
             step = model.readStep(params, i)  
             t1 = step.time
             
-            for iparam, param in enumerate(params):
+            # dual 
+            if dual:
+                    
+                # fix plot and other related plot layout
+                fig, ax = plt.subplots(figsize=(12, 6), nrows = 1, ncols = 2)
+                fig.subplots_adjust(wspace=0.0)
                 
-                # get figurename based on the different selected parameters
-                figname = figurename(jdata, path_tosave, i, param, norm, zoom_level)
+                # plots based on preferences
+                cpo1 = p() # step0
+                cpo2 = p() # step1
                 
-                # set time label
-                idx_tr, t_lbl = time_lbl(path_tosave, modelname, t1, norm)
-            
-                fig = plt.figure(figsize=(6, 6))
-                ax1 = fig.add_subplot(111)
+                # adjust zoom
+                adjust_zoom(ax, extentx, extenty)
+                
+                # adjust time
+                adjust_time(ax, t_lbl)
+
+                # adjust ticks and labels
+                adjust_ticks_and_labels(ax, x_lbl, y_lbl)
+                
+                # tight_layout               
+                fig.tight_layout()
+                fig.subplots_adjust(wspace=0.0)
+                
+                # main title
+                st = fig.suptitle(title_lbl, fontsize=20) # main title
+                st.set_y(0.97)
+                st.set_x(0.5)
+                fig.subplots_adjust(top=0.9)
+                
+                # saving figure
+                fig.savefig(figname, dpi=300)   
+                
+            else:
+                
+                fig, ax = plt.subplots(figsize=(6, 6), nrows = 1, ncols = 1)
+                
+                for iparam, param in enumerate(params):
+                    
+                    # get figurename based on the different selected parameters
+                    figname = figurename(jdata, path_tosave, i, param, norm, zoom_level)
+                    
+                    # set time label
+                    idx_tr, t_lbl = time_lbl(path_tosave, modelname, t1, norm)
+                    
+                    #                     
+                    cpo = p()
+
+                    
+                    # adjust zoom
+                    adjust_zoom(ax, extentx, extenty)
+                    
+                    # adjust time
+                    adjust_time(ax, t_lbl)
+    
+                    # adjust ticks and labels
+                    adjust_ticks_and_labels(ax, x_lbl, y_lbl)
+                    
+                    # tight_layout               
+                    fig.tight_layout()
+                    fig.subplots_adjust(wspace=0.0)
+                    
+                    # main title
+                    st = fig.suptitle(title_lbl, fontsize=20) # main title
+                    st.set_y(0.97)
+                    st.set_x(0.5)
+                    fig.subplots_adjust(top=0.9)
+                    
+                    # saving figure
+                    fig.savefig(figname, dpi=300)  
+                    
+                    
+                    
+                    
+                    # distance between the two plots
+                    # 
+                else:
+                    fig = plt.figure(figsize=(6, 6))
+                    ax1 = fig.add_subplot(111)
                 
                 # plot data
-                cax = ax1.pcolormesh(model.x/scaling_factor, model.y/scaling_factor, step.data[iparam]/param_unit_factor,
+                cax = ax1.pcolormesh(x_direction * model.x/scaling_factor, 
+                                     model.y/scaling_factor, 
+                                     step.data[iparam]/param_unit_factor,
                                          vmin=vmin,
                                          vmax=vmax,
                                          cmap=colormap, zorder=2)
                 
                 # showing surface
                 if showSurface:
-                    ax1.contour(model.xc/scaling_factor, model.yc/scaling_factor,
-                            step.cmc[0], 1, colors='k', linewidths=2, zorder=4)
+                    ax1.contour(x_direction * model.xc/scaling_factor, 
+                                model.yc/scaling_factor,
+                                step.cmc[0], 1, colors='k', linewidths=2, 
+                                zorder=4)
                 
-                # showing transient 
+                # showing transient only if below transient
                 if showTransient:
                     if i < idx_tr:
                         None
                     else:
-                        # plot the transient
-                        None
+                        # this values need to be scaled
+                        xtr_surf, ytr_surf = getTransientcrossSection(path_tosave, modelname)
+                        
+                        ax1.plot(x_direction * xtr_surf/scaling_factor, ytr_surf/scaling_factor,
+                            'r', linewidth=2, zorder=5)
+                
+                # showing tracers        
+                if showTracers:                    
+                    for u in range(model.tracer_numu):
+                        tru = model.tru[u]
+                        # Plot the tracers in horizontal lines, every 20 lines
+                        for l in np.arange(0, len(tru.xlines), showTracers):
+                            ax1.plot(x_direction *step.xmark[tru.xlines[l]]/scaling_factor,
+                                     step.ymark[tru.xlines[l]]/scaling_factor,
+                                     c='k', marker='.', linestyle='None', 
+                                     markersize=1.0, zorder=3)
+        
+                        # Plot the tracers as vertical lines, every 20 lines
+                        for l in np.arange(0, len(tru.ylines), showTracers):
+                            ax1.plot(x_direction *step.xmark[tru.ylines[l]]/scaling_factor,
+                                     step.ymark[tru.ylines[l]]/scaling_factor,
+                                     c='k', marker='.', linestyle='None', 
+                                     markersize=1.0, zorder=3)
+
                     
                 for ax in [ax1]:
                     ax.minorticks_off()
